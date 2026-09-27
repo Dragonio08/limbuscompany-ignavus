@@ -702,20 +702,20 @@ body::before {
   gap: 0.5rem;
   font-family: 'Bebas Neue', sans-serif;
   letter-spacing: 0.03em;
-  font-size: 1rem;
+  font-size: 0.85rem;
   cursor: help;
 }
 
 .skill-value {
   color: var(--ink-dim);
   font-family: 'Times New Roman', Times, serif;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
 }
 
 .skill-description {
   color: var(--ink-dim);
   font-style: italic;
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   margin: 0.1rem 0 0;
 }
 
@@ -727,9 +727,9 @@ body::before {
 
 .skill-tag-btn {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 0.75rem;
-  letter-spacing: 0.03em;
-  padding: 0.25rem 0.55rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  padding: 0.45rem 0.9rem;
   background: var(--bg-panel);
   border: 1px solid var(--line);
   color: var(--ink-dim);
