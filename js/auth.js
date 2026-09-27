@@ -61,7 +61,10 @@ form.addEventListener("submit", async (event) => {
       const { data, error } = await client.auth.signUp({ email, password });
       if (error) throw error;
       if (data.user && !data.session) {
-        setMessage("Check your email to confirm your account.", "is-ok");
+        setMessage(
+          "Check your email to confirm your account. Click the 'Confirm Email' button on the Supabase email you will receive.",
+          "is-ok"
+        );
       } else if (data.session) {
         showSignedIn(data.user);
       }
