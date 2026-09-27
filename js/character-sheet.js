@@ -203,18 +203,76 @@ function wireClassification() {
   });
 }
 
-// ---- Stats (read-only, fixed at creation) ----
+// ---- Stats (read-only, fixed at creation) + Skills ----
+
+function skillDescriptorCapped(value) {
+  return DESCRIPTORS[Math.min(value, 6)];
+}
 
 function renderStats() {
-  ["fortitude", "prudence", "temperance", "justice"].forEach((stat) => {
-    const value = character[stat];
-    document.getElementById(`sheet-stat-${stat}`).textContent = value;
-    document.getElementById(`sheet-descriptor-${stat}`).textContent =
+  ARCHETYPES.forEach((archetype) => {
+    const value = character[archetype];
+    document.getElementById(`sheet-stat-${archetype}`).textContent = value;
+    document.getElementById(`sheet-descriptor-${archetype}`).textContent =
       DESCRIPTORS[value];
+    renderSkillsReadOnly(archetype, value);
+  });
+}
+
+function renderSkillsReadOnly(archetype, archetypeValue) {
+  const container = document.getElementById(`sheet-skills-${archetype}`);
+  container.innerHTML = "";
+
+  const picks = character.skill_picks || {};
+  const signature = picks.signature;
+  const proficient = picks.proficient || [];
+
+  SKILLS[archetype].forEach((skill) => {
+    let value = archetypeValue;
+    let tag = "";
+    if (signature === skill.key) {
+      value += 2;
+      tag = " (Signature)";
+    } else if (proficient.includes(skill.key)) {
+      value += 1;
+      tag = " (Proficient)";
+    }
+
+    const row = document.createElement("div");
+    row.className = "skill-row";
+
+    const info = document.createElement("div");
+    info.className = "skill-info";
+
+    const nameLine = document.createElement("div");
+    nameLine.className = "skill-name-line";
+    nameLine.title = skill.quote;
+
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = skill.name + tag;
+
+    const valueSpan = document.createElement("span");
+    valueSpan.className = "skill-value";
+    valueSpan.textContent = `${value} · ${skillDescriptorCapped(value)}`;
+
+    nameLine.appendChild(nameSpan);
+    nameLine.appendChild(valueSpan);
+
+    const desc = document.createElement("p");
+    desc.className = "skill-description";
+    desc.textContent = skill.description;
+
+    info.appendChild(nameLine);
+    info.appendChild(desc);
+    row.appendChild(info);
+    container.appendChild(row);
   });
 }
 
 // ---- Inventory ----
+// Dragging uses Pointer Events (not the HTML5 drag/drop API) so the full
+// shape of an item — not just the single cell you grabbed — follows the
+// cursor as a ghost, with live valid/invalid highlighting on the grid.
 
 function renderInventory() {
   const grid = document.getElementById("inventory-grid");
@@ -244,28 +302,18 @@ function renderInventory() {
       if (item) {
         cell.className = `inventory-item-cell inventory-item-${item.type}`;
         cell.textContent = item.name;
-        cell.draggable = canEdit;
-        cell.addEventListener("click", () => showItemDetail(item));
 
         if (canEdit) {
-          cell.addEventListener("dragstart", (event) => {
-            event.dataTransfer.setData("text/plain", item.id);
+          cell.classList.add("is-draggable");
+          cell.style.touchAction = "none";
+          cell.addEventListener("pointerdown", (event) => {
+            startItemDrag(event, item, r, c);
           });
+        } else {
+          cell.addEventListener("click", () => showItemDetail(item));
         }
       } else {
         cell.className = "inventory-cell";
-      }
-
-      if (canEdit) {
-        cell.addEventListener("dragover", (event) => {
-          event.preventDefault();
-        });
-
-        cell.addEventListener("drop", (event) => {
-          event.preventDefault();
-          const itemId = event.dataTransfer.getData("text/plain");
-          moveItem(itemId, r, c);
-        });
       }
 
       grid.appendChild(cell);
@@ -273,38 +321,114 @@ function renderInventory() {
   }
 }
 
-async function moveItem(itemId, newRow, newCol) {
+function startItemDrag(event, item, grabRow, grabCol) {
+  event.preventDefault();
+
+  const grid = document.getElementById("inventory-grid");
+  const rect = grid.getBoundingClientRect();
+  const cellSize = rect.width / 6;
+  const grabOffset = [grabRow - item.origin.row, grabCol - item.origin.col];
+
+  const maxDr = Math.max(...item.cells.map(([dr]) => dr));
+  const maxDc = Math.max(...item.cells.map(([, dc]) => dc));
+
+  const ghost = document.createElement("div");
+  ghost.className = "inventory-drag-ghost";
+  ghost.style.width = `${(maxDc + 1) * cellSize}px`;
+  ghost.style.height = `${(maxDr + 1) * cellSize}px`;
+
+  item.cells.forEach(([dr, dc]) => {
+    const sq = document.createElement("div");
+    sq.className = `inventory-ghost-cell inventory-item-${item.type}`;
+    sq.style.left = `${dc * cellSize}px`;
+    sq.style.top = `${dr * cellSize}px`;
+    sq.style.width = `${cellSize}px`;
+    sq.style.height = `${cellSize}px`;
+    ghost.appendChild(sq);
+  });
+
+  document.body.appendChild(ghost);
+
+  function positionGhost(clientX, clientY) {
+    ghost.style.left = `${clientX - (grabOffset[1] * cellSize + cellSize / 2)}px`;
+    ghost.style.top = `${clientY - (grabOffset[0] * cellSize + cellSize / 2)}px`;
+  }
+  positionGhost(event.clientX, event.clientY);
+
+  const startX = event.clientX;
+  const startY = event.clientY;
+  let moved = false;
+  let lastResult = null;
+
+  function clearHighlights() {
+    grid
+      .querySelectorAll(".drag-target-valid, .drag-target-invalid")
+      .forEach((el) => el.classList.remove("drag-target-valid", "drag-target-invalid"));
+  }
+
+  function onPointerMove(moveEvent) {
+    const dx = moveEvent.clientX - startX;
+    const dy = moveEvent.clientY - startY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+
+    positionGhost(moveEvent.clientX, moveEvent.clientY);
+
+    const gridRect = grid.getBoundingClientRect();
+    const pointerRow = Math.floor((moveEvent.clientY - gridRect.top) / cellSize);
+    const pointerCol = Math.floor((moveEvent.clientX - gridRect.left) / cellSize);
+    const originRow = pointerRow - grabOffset[0];
+    const originCol = pointerCol - grabOffset[1];
+
+    const translated = item.cells.map(([dr, dc]) => [originRow + dr, originCol + dc]);
+    const inBounds = translated.every(([r, c]) => r >= 0 && r < 6 && c >= 0 && c < 6);
+
+    const occupiedByOthers = new Set();
+    character.inventory.forEach((otherItem) => {
+      if (otherItem.id === item.id) return;
+      otherItem.cells.forEach(([dr, dc]) => {
+        occupiedByOthers.add(`${otherItem.origin.row + dr},${otherItem.origin.col + dc}`);
+      });
+    });
+    const overlaps = translated.some(([r, c]) => occupiedByOthers.has(`${r},${c}`));
+    const valid = inBounds && !overlaps;
+
+    clearHighlights();
+    if (inBounds) {
+      translated.forEach(([r, c]) => {
+        const targetCell = grid.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        if (targetCell) {
+          targetCell.classList.add(valid ? "drag-target-valid" : "drag-target-invalid");
+        }
+      });
+    }
+
+    lastResult = { valid, originRow, originCol };
+  }
+
+  function onPointerUp() {
+    document.removeEventListener("pointermove", onPointerMove);
+    document.removeEventListener("pointerup", onPointerUp);
+    ghost.remove();
+    clearHighlights();
+
+    if (!moved) {
+      showItemDetail(item);
+      return;
+    }
+
+    if (lastResult && lastResult.valid) {
+      finalizeMove(item.id, lastResult.originRow, lastResult.originCol);
+    }
+  }
+
+  document.addEventListener("pointermove", onPointerMove);
+  document.addEventListener("pointerup", onPointerUp);
+}
+
+async function finalizeMove(itemId, newRow, newCol) {
   const statusEl = document.getElementById("inventory-status");
   const item = character.inventory.find((i) => i.id === itemId);
   if (!item) return;
-
-  // item.cells holds the shape as offsets relative to origin, so only
-  // origin needs to move — the shape itself stays the same.
-  const translated = item.cells.map(([dr, dc]) => [newRow + dr, newCol + dc]);
-
-  const inBounds = translated.every(
-    ([r, c]) => r >= 0 && r < 6 && c >= 0 && c < 6
-  );
-  if (!inBounds) {
-    statusEl.textContent = "That doesn't fit there.";
-    return;
-  }
-
-  const occupiedByOthers = new Set();
-  character.inventory.forEach((otherItem) => {
-    if (otherItem.id === item.id) return;
-    otherItem.cells.forEach(([dr, dc]) => {
-      const r = otherItem.origin.row + dr;
-      const c = otherItem.origin.col + dc;
-      occupiedByOthers.add(`${r},${c}`);
-    });
-  });
-
-  const overlaps = translated.some(([r, c]) => occupiedByOthers.has(`${r},${c}`));
-  if (overlaps) {
-    statusEl.textContent = "Something's already there.";
-    return;
-  }
 
   const updatedInventory = character.inventory.map((invItem) =>
     invItem.id === item.id
@@ -373,6 +497,38 @@ function showItemDetail(item) {
   } else {
     moneyRow.style.display = "none";
   }
+
+  const descInput = document.getElementById("item-description-input");
+  const descStatus = document.getElementById("item-description-status");
+  descStatus.textContent = "";
+  descInput.value = item.description || "";
+
+  const descSaveBtn = document.getElementById("item-description-save");
+  const newDescSaveBtn = descSaveBtn.cloneNode(true); // clear old listeners
+  descSaveBtn.parentNode.replaceChild(newDescSaveBtn, descSaveBtn);
+
+  newDescSaveBtn.addEventListener("click", async () => {
+    if (!isOwner && !isDm) return;
+    const description = descInput.value;
+
+    const updatedInventory = character.inventory.map((invItem) =>
+      invItem.id === item.id ? { ...invItem, description } : invItem
+    );
+
+    const { error } = await client
+      .from("characters")
+      .update({ inventory: updatedInventory })
+      .eq("id", character.id);
+
+    if (error) {
+      descStatus.textContent = "Couldn't save: " + error.message;
+      return;
+    }
+
+    character.inventory = updatedInventory;
+    item.description = description;
+    descStatus.textContent = "Saved.";
+  });
 }
 
 // ---- Story & Notes ----

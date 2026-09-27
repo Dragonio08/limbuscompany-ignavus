@@ -63,10 +63,130 @@ document.querySelectorAll(".stat-btn").forEach((btn) => {
       }
     }
     STAT_NAMES.forEach(updateStatUI);
+    renderAllSkills();
   });
 });
 
 STAT_NAMES.forEach(updateStatUI);
+
+// ---- Skills (signature / proficient picks) ----
+
+const DESCRIPTOR_CAP = 6;
+const skillPicks = { signature: null, proficient: [] };
+
+function skillValue(archetype, skillKey) {
+  const base = stats[archetype];
+  if (skillPicks.signature === skillKey) return base + 2;
+  if (skillPicks.proficient.includes(skillKey)) return base + 1;
+  return base;
+}
+
+function skillDescriptor(value) {
+  return DESCRIPTORS[Math.min(value, DESCRIPTOR_CAP)];
+}
+
+function updateSkillPicksStatus() {
+  const statusEl = document.getElementById("skill-picks-status");
+  const sigLabel = skillPicks.signature
+    ? findSkillByKey(skillPicks.signature).name
+    : "none chosen";
+  statusEl.textContent = `Signature: ${sigLabel} · Proficient: ${skillPicks.proficient.length}/2 chosen`;
+}
+
+function findSkillByKey(key) {
+  for (const archetype of ARCHETYPES) {
+    const found = SKILLS[archetype].find((s) => s.key === key);
+    if (found) return found;
+  }
+  return null;
+}
+
+function setSignature(skillKey) {
+  skillPicks.proficient = skillPicks.proficient.filter((k) => k !== skillKey);
+  skillPicks.signature = skillPicks.signature === skillKey ? null : skillKey;
+  renderAllSkills();
+}
+
+function toggleProficient(skillKey) {
+  if (skillPicks.signature === skillKey) return;
+  if (skillPicks.proficient.includes(skillKey)) {
+    skillPicks.proficient = skillPicks.proficient.filter((k) => k !== skillKey);
+  } else {
+    if (skillPicks.proficient.length >= 2) return;
+    skillPicks.proficient.push(skillKey);
+  }
+  renderAllSkills();
+}
+
+function renderSkillsForArchetype(archetype) {
+  const container = document.getElementById(`skills-list-${archetype}`);
+  container.innerHTML = "";
+
+  SKILLS[archetype].forEach((skill) => {
+    const value = skillValue(archetype, skill.key);
+    const isSignature = skillPicks.signature === skill.key;
+    const isProficient = skillPicks.proficient.includes(skill.key);
+
+    const row = document.createElement("div");
+    row.className = "skill-row";
+
+    const info = document.createElement("div");
+    info.className = "skill-info";
+
+    const nameLine = document.createElement("div");
+    nameLine.className = "skill-name-line";
+    nameLine.title = skill.quote;
+
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = skill.name;
+
+    const valueSpan = document.createElement("span");
+    valueSpan.className = "skill-value";
+    valueSpan.textContent = `${value} · ${skillDescriptor(value)}`;
+
+    nameLine.appendChild(nameSpan);
+    nameLine.appendChild(valueSpan);
+
+    const desc = document.createElement("p");
+    desc.className = "skill-description";
+    desc.textContent = skill.description;
+
+    info.appendChild(nameLine);
+    info.appendChild(desc);
+
+    const tags = document.createElement("div");
+    tags.className = "skill-tags";
+
+    const sigBtn = document.createElement("button");
+    sigBtn.type = "button";
+    sigBtn.className = "skill-tag-btn" + (isSignature ? " is-signature" : "");
+    sigBtn.textContent = "Signature";
+    sigBtn.disabled = isProficient;
+    sigBtn.addEventListener("click", () => setSignature(skill.key));
+
+    const profBtn = document.createElement("button");
+    profBtn.type = "button";
+    profBtn.className = "skill-tag-btn" + (isProficient ? " is-proficient" : "");
+    profBtn.textContent = "Proficient";
+    profBtn.disabled =
+      isSignature || (!isProficient && skillPicks.proficient.length >= 2);
+    profBtn.addEventListener("click", () => toggleProficient(skill.key));
+
+    tags.appendChild(sigBtn);
+    tags.appendChild(profBtn);
+
+    row.appendChild(info);
+    row.appendChild(tags);
+    container.appendChild(row);
+  });
+}
+
+function renderAllSkills() {
+  ARCHETYPES.forEach(renderSkillsForArchetype);
+  updateSkillPicksStatus();
+}
+
+renderAllSkills();
 
 // ---- Shape picker grids ----
 
@@ -204,6 +324,16 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (!skillPicks.signature) {
+    errorEl.textContent = "Choose 1 signature skill.";
+    return;
+  }
+
+  if (skillPicks.proficient.length !== 2) {
+    errorEl.textContent = "Choose exactly 2 proficient skills.";
+    return;
+  }
+
   const placed = packItems([
     { type: "container", name: containerName, shape: normalizeShape(containerCells) },
     { type: "weapon", name: weaponName, shape: normalizeShape(weaponCells) },
@@ -229,6 +359,7 @@ form.addEventListener("submit", async (event) => {
     type: item.type,
     cells: item.shape,
     origin: item.origin,
+    description: "",
     money: item.type === "container" ? 0 : undefined,
   }));
 
@@ -242,6 +373,7 @@ form.addEventListener("submit", async (event) => {
       prudence: stats.prudence,
       temperance: stats.temperance,
       justice: stats.justice,
+      skill_picks: skillPicks,
       inventory,
       story,
     })
