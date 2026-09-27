@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
 
 :root {
   --bg: #0a0908;
@@ -24,7 +24,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Times New Roman', Times, serif;
   font-size: 19px;
   line-height: 1.6;
 }
@@ -63,9 +63,9 @@ body::before {
 
 .hero-mark {
   display: block;
-  width: 14px;
-  height: 14px;
-  margin: 0 auto 1.4rem;
+  width: clamp(3.4rem, 10vw, 7rem);
+  height: clamp(3.4rem, 10vw, 7rem);
+  margin: 0 auto 0.6rem;
   opacity: 0.85;
 }
 
@@ -86,7 +86,7 @@ body::before {
 }
 
 .site-subtitle {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Times New Roman', Times, serif;
   font-style: italic;
   color: var(--ink-dim);
   font-size: 1.15rem;
@@ -102,7 +102,7 @@ body::before {
   align-items: center;
   gap: 0.5rem;
   color: var(--ink-dim);
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Times New Roman', Times, serif;
   font-style: italic;
   font-size: 0.95rem;
   animation: float 2.4s ease-in-out infinite;
@@ -135,7 +135,7 @@ body::before {
 .gateway-heading {
   font-size: 1rem;
   color: var(--ink-dim);
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Times New Roman', Times, serif;
   font-style: italic;
   margin: 0 0 0.5rem;
 }
@@ -226,7 +226,7 @@ body::before {
 }
 
 .nav-account-email {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Times New Roman', Times, serif;
   font-style: italic;
   color: var(--yellow);
   font-size: 0.95rem;
@@ -327,7 +327,7 @@ body::before {
 }
 
 .auth-field input {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Times New Roman', Times, serif;
   font-size: 1.05rem;
   background: #0e0c0b;
   border: 1px solid var(--line);
@@ -375,7 +375,7 @@ body::before {
   border: none;
   text-decoration: underline;
   cursor: pointer;
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Times New Roman', Times, serif;
 }
 
 .auth-toggle:hover,
