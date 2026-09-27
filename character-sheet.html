@@ -30,11 +30,10 @@
       <div class="xp-bar-track">
         <div id="sheet-xp-bar" class="xp-bar-fill" style="width: 0%;"></div>
       </div>
-      <div class="xp-controls">
+      <div id="xp-edit-controls" class="xp-controls" style="display: none;">
         <label for="sheet-xp-input">XP</label>
         <input id="sheet-xp-input" type="number" min="0" max="100" value="0">
         <button id="sheet-xp-save" class="small-btn" type="button">Save XP</button>
-        <button id="sheet-level-up" class="small-btn" type="button">Level Up</button>
         <span id="sheet-xp-status" class="save-status"></span>
       </div>
     </div>
@@ -76,11 +75,12 @@
     <div class="sheet-section">
       <h2 class="sheet-section-title display">Inventory</h2>
       <div id="inventory-grid" class="inventory-grid"></div>
+      <p id="inventory-status" class="save-status"></p>
       <div id="item-detail-panel" class="item-detail-panel" style="display: none;">
         <p id="item-detail-name" class="item-detail-name display"></p>
         <p id="item-detail-type" class="item-detail-type"></p>
         <div id="item-money-row" class="money-row" style="display: none;">
-          <label for="item-money-input">Lunacy</label>
+          <label for="item-money-input">Money</label>
           <input id="item-money-input" type="number" min="0" step="1">
           <button id="item-money-save" class="small-btn" type="button">Save</button>
           <span id="item-money-status" class="save-status"></span>
