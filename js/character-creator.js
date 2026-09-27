@@ -26,7 +26,7 @@ const DESCRIPTORS = {
 
 const STAT_NAMES = ["fortitude", "prudence", "temperance", "justice"];
 const stats = { fortitude: 1, prudence: 1, temperance: 1, justice: 1 };
-const TOTAL_POINTS = 5;
+const TOTAL_POINTS = 7;
 let pointsRemaining = TOTAL_POINTS;
 
 const pointsRemainingEl = document.getElementById("points-remaining");

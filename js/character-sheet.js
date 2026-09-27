@@ -87,7 +87,7 @@ function renderSheet() {
 
   document.getElementById("sheet-name").textContent = character.name;
   document.getElementById("sheet-district").textContent =
-    `${character.district} — born of the city`;
+    `Born in ${character.district}`;
 
   renderLevelXp();
   renderClassification();
@@ -109,7 +109,7 @@ function renderLevelXp() {
   document.getElementById("sheet-level").textContent = character.level;
   document.getElementById("sheet-xp-input").value = character.xp;
   document.getElementById("sheet-xp-bar").style.width = `${character.xp}%`;
-  document.getElementById("sheet-level-up").disabled = character.xp < 100;
+  document.getElementById("xp-edit-controls").style.display = isDm ? "flex" : "none";
 }
 
 function wireLevelXp() {
@@ -117,14 +117,20 @@ function wireLevelXp() {
   const xpStatus = document.getElementById("sheet-xp-status");
 
   document.getElementById("sheet-xp-save").addEventListener("click", async () => {
-    if (!isOwner && !isDm) return;
+    if (!isDm) return;
     let xp = parseInt(xpInput.value, 10);
     if (Number.isNaN(xp)) xp = 0;
     xp = Math.max(0, Math.min(100, xp));
 
+    let level = character.level;
+    if (xp >= 100) {
+      level += 1;
+      xp = 0;
+    }
+
     const { error } = await client
       .from("characters")
-      .update({ xp })
+      .update({ xp, level })
       .eq("id", character.id);
 
     if (error) {
@@ -133,26 +139,8 @@ function wireLevelXp() {
     }
 
     character.xp = xp;
+    character.level = level;
     xpStatus.textContent = "Saved.";
-    renderLevelXp();
-  });
-
-  document.getElementById("sheet-level-up").addEventListener("click", async () => {
-    if (!isOwner && !isDm) return;
-    if (character.xp < 100) return;
-
-    const { error } = await client
-      .from("characters")
-      .update({ level: character.level + 1, xp: 0 })
-      .eq("id", character.id);
-
-    if (error) {
-      xpStatus.textContent = "Couldn't save: " + error.message;
-      return;
-    }
-
-    character.level += 1;
-    character.xp = 0;
     renderLevelXp();
   });
 }
@@ -230,8 +218,11 @@ function renderStats() {
 
 function renderInventory() {
   const grid = document.getElementById("inventory-grid");
+  const statusEl = document.getElementById("inventory-status");
+  statusEl.textContent = "";
   grid.innerHTML = "";
 
+  const canEdit = isOwner || isDm;
   const cellMap = new Map(); // "r,c" -> item
 
   (character.inventory || []).forEach((item) => {
@@ -247,18 +238,93 @@ function renderInventory() {
       const key = `${r},${c}`;
       const item = cellMap.get(key);
       const cell = document.createElement("div");
+      cell.dataset.row = r;
+      cell.dataset.col = c;
 
       if (item) {
         cell.className = `inventory-item-cell inventory-item-${item.type}`;
         cell.textContent = item.name;
+        cell.draggable = canEdit;
         cell.addEventListener("click", () => showItemDetail(item));
+
+        if (canEdit) {
+          cell.addEventListener("dragstart", (event) => {
+            event.dataTransfer.setData("text/plain", item.id);
+          });
+        }
       } else {
         cell.className = "inventory-cell";
+      }
+
+      if (canEdit) {
+        cell.addEventListener("dragover", (event) => {
+          event.preventDefault();
+        });
+
+        cell.addEventListener("drop", (event) => {
+          event.preventDefault();
+          const itemId = event.dataTransfer.getData("text/plain");
+          moveItem(itemId, r, c);
+        });
       }
 
       grid.appendChild(cell);
     }
   }
+}
+
+async function moveItem(itemId, newRow, newCol) {
+  const statusEl = document.getElementById("inventory-status");
+  const item = character.inventory.find((i) => i.id === itemId);
+  if (!item) return;
+
+  // item.cells holds the shape as offsets relative to origin, so only
+  // origin needs to move — the shape itself stays the same.
+  const translated = item.cells.map(([dr, dc]) => [newRow + dr, newCol + dc]);
+
+  const inBounds = translated.every(
+    ([r, c]) => r >= 0 && r < 6 && c >= 0 && c < 6
+  );
+  if (!inBounds) {
+    statusEl.textContent = "That doesn't fit there.";
+    return;
+  }
+
+  const occupiedByOthers = new Set();
+  character.inventory.forEach((otherItem) => {
+    if (otherItem.id === item.id) return;
+    otherItem.cells.forEach(([dr, dc]) => {
+      const r = otherItem.origin.row + dr;
+      const c = otherItem.origin.col + dc;
+      occupiedByOthers.add(`${r},${c}`);
+    });
+  });
+
+  const overlaps = translated.some(([r, c]) => occupiedByOthers.has(`${r},${c}`));
+  if (overlaps) {
+    statusEl.textContent = "Something's already there.";
+    return;
+  }
+
+  const updatedInventory = character.inventory.map((invItem) =>
+    invItem.id === item.id
+      ? { ...invItem, origin: { row: newRow, col: newCol } }
+      : invItem
+  );
+
+  const { error } = await client
+    .from("characters")
+    .update({ inventory: updatedInventory })
+    .eq("id", character.id);
+
+  if (error) {
+    statusEl.textContent = "Couldn't save: " + error.message;
+    return;
+  }
+
+  character.inventory = updatedInventory;
+  statusEl.textContent = "";
+  renderInventory();
 }
 
 function showItemDetail(item) {
