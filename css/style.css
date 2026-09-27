@@ -9,6 +9,10 @@
   --crimson-bright: #a3222f;
   --gold: #9c7f4d;
   --yellow: #d9b23c;
+  --stat-fortitude: #c23b3b;
+  --stat-prudence: #f2efe9;
+  --stat-temperance: #9b6bd1;
+  --stat-justice: #a7e3df;
   --line: #2a2622;
 }
 
@@ -77,11 +81,11 @@ body::before {
   text-shadow: 0 0 28px rgba(163, 34, 47, 0.35);
 }
 
-.site-title .accent {
+.accent {
   color: var(--crimson-bright);
 }
 
-.site-title .accent-yellow {
+.accent-yellow {
   color: var(--yellow);
 }
 
@@ -302,6 +306,55 @@ body::before {
   font-size: 0.9rem;
 }
 
+/* ---------- Characters page ---------- */
+
+.chars-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-top: 60px;
+}
+
+.chars-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.3rem 1.6rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.chars-title {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  margin: 0;
+}
+
+.new-character-btn {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  padding: 0.6rem 1.2rem;
+  background: var(--crimson);
+  border: 1px solid var(--crimson-bright);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.new-character-btn:hover,
+.new-character-btn:focus-visible {
+  background: var(--crimson-bright);
+}
+
+.chars-scroll-box {
+  flex: 1;
+  margin: 1.4rem 1.6rem 1.8rem;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  overflow-y: auto;
+}
+
 /* ---------- Login form ---------- */
 
 .auth-card {
@@ -405,4 +458,437 @@ body::before {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1.4rem;
   color: var(--yellow);
+}
+
+/* ---------- Character list cards ---------- */
+
+.chars-empty-note {
+  margin: 1.6rem;
+  color: var(--ink-dim);
+  font-style: italic;
+}
+
+.char-card {
+  display: block;
+  padding: 1rem 1.3rem;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: var(--ink);
+  transition: background 0.2s ease;
+}
+
+.char-card:hover,
+.char-card:focus-visible {
+  background: #1b1615;
+}
+
+.char-card-name {
+  font-size: 1.3rem;
+  letter-spacing: 0.03em;
+  margin: 0 0 0.2rem;
+}
+
+.char-card-meta {
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* ---------- Creator / sheet shared page shell ---------- */
+
+.creator-page,
+.sheet-page {
+  min-height: 100vh;
+  padding: calc(60px + 2rem) 1.6rem 3rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.creator-title,
+.sheet-name {
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin: 0 0 1.6rem;
+  text-align: center;
+}
+
+.creator-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1.4rem;
+}
+
+.creator-field label {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.04em;
+  font-size: 1.05rem;
+  color: var(--ink-dim);
+}
+
+.creator-field input,
+.creator-field select,
+.creator-field textarea {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.05rem;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.6rem 0.7rem;
+}
+
+.creator-field input:focus-visible,
+.creator-field select:focus-visible,
+.creator-field textarea:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.creator-section {
+  border-top: 1px solid var(--line);
+  padding-top: 1.4rem;
+  margin-bottom: 1.6rem;
+}
+
+.creator-section-title {
+  font-size: 1.4rem;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.9rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.points-remaining {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 0.95rem;
+  color: var(--ink-dim);
+  letter-spacing: 0;
+}
+
+.creator-note {
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+  font-style: italic;
+  margin: -0.4rem 0 1rem;
+}
+
+.creator-submit {
+  margin-top: 0.6rem;
+}
+
+/* ---------- Stat point-buy rows ---------- */
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.stat-name {
+  width: 8.5rem;
+  color: var(--stat-color, var(--ink));
+  font-size: 1.15rem;
+  letter-spacing: 0.03em;
+}
+
+.stat-btn {
+  width: 2rem;
+  height: 2rem;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.stat-btn:hover:not(:disabled),
+.stat-btn:focus-visible:not(:disabled) {
+  border-color: var(--gold);
+}
+
+.stat-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stat-value {
+  width: 1.6rem;
+  text-align: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  color: var(--stat-color, var(--ink));
+}
+
+.stat-descriptor {
+  flex: 1;
+  text-align: right;
+  color: var(--ink-dim);
+  font-style: italic;
+  font-size: 0.95rem;
+}
+
+/* ---------- Item builder / shape picker ---------- */
+
+.item-builder {
+  margin-bottom: 1.6rem;
+}
+
+.item-builder label {
+  display: block;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.04em;
+  font-size: 1.05rem;
+  color: var(--ink-dim);
+  margin-bottom: 0.4rem;
+}
+
+.item-name-input {
+  width: 100%;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.05rem;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.6rem 0.7rem;
+  margin-bottom: 0.7rem;
+}
+
+.shape-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 3px;
+  width: min(240px, 100%);
+}
+
+.shape-cell {
+  aspect-ratio: 1;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  padding: 0;
+}
+
+.shape-cell:hover {
+  border-color: var(--gold);
+}
+
+.shape-cell.selected {
+  background: var(--crimson);
+  border-color: var(--crimson-bright);
+}
+
+/* ---------- Inventory grid (read view on sheet) ---------- */
+
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  gap: 3px;
+  width: min(320px, 100%);
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+
+.inventory-cell {
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+}
+
+.inventory-item-container {
+  background: var(--crimson);
+  border-color: var(--crimson-bright);
+}
+
+.inventory-item-weapon {
+  background: #3a3226;
+  border-color: var(--gold);
+}
+
+.inventory-item-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-align: center;
+  padding: 2px;
+  overflow: hidden;
+}
+
+.item-detail-panel {
+  margin-top: 1.2rem;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  padding: 1.1rem 1.3rem;
+  text-align: left;
+}
+
+.item-detail-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  margin: 0 0 0.3rem;
+}
+
+.item-detail-type {
+  color: var(--ink-dim);
+  font-style: italic;
+  margin: 0 0 0.8rem;
+}
+
+.money-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.money-row input {
+  width: 6rem;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.05rem;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.4rem 0.6rem;
+}
+
+/* ---------- Sheet layout ---------- */
+
+.sheet-section {
+  border-top: 1px solid var(--line);
+  padding-top: 1.4rem;
+  margin-bottom: 1.8rem;
+}
+
+.sheet-section-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.9rem;
+}
+
+.sheet-meta {
+  text-align: center;
+  color: var(--ink-dim);
+  font-style: italic;
+  margin: -1rem 0 1.6rem;
+}
+
+.level-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.level-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+}
+
+.xp-bar-track {
+  width: 100%;
+  height: 14px;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--crimson), var(--yellow));
+  transition: width 0.3s ease;
+}
+
+.xp-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.xp-controls input {
+  width: 5rem;
+  font-family: 'Times New Roman', Times, serif;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.4rem 0.6rem;
+}
+
+.small-btn {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  padding: 0.45rem 0.9rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.small-btn:hover,
+.small-btn:focus-visible {
+  border-color: var(--gold);
+}
+
+.classification-ladder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.classification-stage {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  font-size: 0.9rem;
+}
+
+.classification-stage.is-current {
+  border-color: var(--crimson-bright);
+  color: var(--yellow);
+  background: var(--bg-panel);
+}
+
+.classification-dm-controls {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.6rem;
+}
+
+.sheet-stats .stat-row {
+  cursor: default;
+}
+
+.sheet-textarea {
+  width: 100%;
+  min-height: 160px;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.05rem;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.8rem;
+  resize: vertical;
+}
+
+.save-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.6rem;
+}
+
+.save-status {
+  color: var(--ink-dim);
+  font-style: italic;
+  font-size: 0.9rem;
 }
