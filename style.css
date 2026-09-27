@@ -8,6 +8,7 @@
   --crimson: #7a1620;
   --crimson-bright: #a3222f;
   --gold: #9c7f4d;
+  --yellow: #d9b23c;
   --line: #2a2622;
 }
 
@@ -60,9 +61,10 @@ body::before {
 }
 
 .hero-mark {
-  width: 46px;
-  height: 46px;
-  margin-bottom: 1.6rem;
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto 1.4rem;
   opacity: 0.85;
 }
 
@@ -76,6 +78,10 @@ body::before {
 
 .site-title .accent {
   color: var(--crimson-bright);
+}
+
+.site-title .accent-yellow {
+  color: var(--yellow);
 }
 
 .site-subtitle {
