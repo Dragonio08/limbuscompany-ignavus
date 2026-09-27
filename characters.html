@@ -9,18 +9,22 @@
 <body>
 
   <header class="site-nav">
-    <a class="site-nav-brand display" href="index.html">Limbus Company: Ignavus</a>
+    <a class="site-nav-brand display" href="index.html"><span class="accent-yellow">Limbus Company</span>: <span class="accent">Ignavus</span></a>
     <div id="nav-account" class="site-nav-account"></div>
   </header>
 
-  <section class="page">
-    <h1 class="page-title display">Characters</h1>
-    <p class="page-note">The roster is still being assembled. Check back once the Sinners are cast.</p>
-  </section>
+  <div class="chars-page">
+    <div class="chars-header">
+      <h1 class="chars-title display">Characters</h1>
+      <button id="new-character-btn" class="new-character-btn display" type="button">Make new +</button>
+    </div>
+    <div id="chars-scroll-box" class="chars-scroll-box"></div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/supabase-client.js"></script>
   <script src="js/navbar.js"></script>
+  <script src="js/characters.js"></script>
 </body>
 </html>

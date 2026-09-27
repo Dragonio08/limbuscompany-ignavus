@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Character Sheet — Limbus Company: Ignavus</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="site-nav">
+    <a class="site-nav-brand display" href="index.html"><span class="accent-yellow">Limbus Company</span>: <span class="accent">Ignavus</span></a>
+    <div id="nav-account" class="site-nav-account"></div>
+  </header>
+
+  <div id="sheet-page" class="sheet-page">
+    <p id="sheet-loading" class="page-note">Loading character…</p>
+  </div>
+
+  <template id="sheet-template">
+    <h1 id="sheet-name" class="sheet-name display"></h1>
+    <p id="sheet-district" class="sheet-meta"></p>
+
+    <div class="sheet-section">
+      <h2 class="sheet-section-title display">Level &amp; Experience</h2>
+      <div class="level-row">
+        <span class="display">Level</span>
+        <span id="sheet-level" class="level-value">1</span>
+      </div>
+      <div class="xp-bar-track">
+        <div id="sheet-xp-bar" class="xp-bar-fill" style="width: 0%;"></div>
+      </div>
+      <div class="xp-controls">
+        <label for="sheet-xp-input">XP</label>
+        <input id="sheet-xp-input" type="number" min="0" max="100" value="0">
+        <button id="sheet-xp-save" class="small-btn" type="button">Save XP</button>
+        <button id="sheet-level-up" class="small-btn" type="button">Level Up</button>
+        <span id="sheet-xp-status" class="save-status"></span>
+      </div>
+    </div>
+
+    <div class="sheet-section">
+      <h2 class="sheet-section-title display">Classification</h2>
+      <div id="classification-ladder" class="classification-ladder"></div>
+      <div id="classification-dm-controls" class="classification-dm-controls" style="display: none;">
+        <button id="classification-back" class="small-btn" type="button">← Regress</button>
+        <button id="classification-forward" class="small-btn" type="button">Advance →</button>
+        <span id="classification-status" class="save-status"></span>
+      </div>
+    </div>
+
+    <div class="sheet-section sheet-stats">
+      <h2 class="sheet-section-title display">Stats</h2>
+      <div class="stat-row" style="--stat-color: var(--stat-fortitude);">
+        <span class="stat-name display">Fortitude</span>
+        <span class="stat-value" id="sheet-stat-fortitude"></span>
+        <span class="stat-descriptor" id="sheet-descriptor-fortitude"></span>
+      </div>
+      <div class="stat-row" style="--stat-color: var(--stat-prudence);">
+        <span class="stat-name display">Prudence</span>
+        <span class="stat-value" id="sheet-stat-prudence"></span>
+        <span class="stat-descriptor" id="sheet-descriptor-prudence"></span>
+      </div>
+      <div class="stat-row" style="--stat-color: var(--stat-temperance);">
+        <span class="stat-name display">Temperance</span>
+        <span class="stat-value" id="sheet-stat-temperance"></span>
+        <span class="stat-descriptor" id="sheet-descriptor-temperance"></span>
+      </div>
+      <div class="stat-row" style="--stat-color: var(--stat-justice);">
+        <span class="stat-name display">Justice</span>
+        <span class="stat-value" id="sheet-stat-justice"></span>
+        <span class="stat-descriptor" id="sheet-descriptor-justice"></span>
+      </div>
+    </div>
+
+    <div class="sheet-section">
+      <h2 class="sheet-section-title display">Inventory</h2>
+      <div id="inventory-grid" class="inventory-grid"></div>
+      <div id="item-detail-panel" class="item-detail-panel" style="display: none;">
+        <p id="item-detail-name" class="item-detail-name display"></p>
+        <p id="item-detail-type" class="item-detail-type"></p>
+        <div id="item-money-row" class="money-row" style="display: none;">
+          <label for="item-money-input">Lunacy</label>
+          <input id="item-money-input" type="number" min="0" step="1">
+          <button id="item-money-save" class="small-btn" type="button">Save</button>
+          <span id="item-money-status" class="save-status"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-section">
+      <h2 class="sheet-section-title display">Story</h2>
+      <textarea id="sheet-story" class="sheet-textarea"></textarea>
+      <div class="save-row">
+        <button id="sheet-story-save" class="small-btn" type="button">Save Story</button>
+        <span id="sheet-story-status" class="save-status"></span>
+      </div>
+    </div>
+
+    <div class="sheet-section">
+      <h2 class="sheet-section-title display">Notes</h2>
+      <textarea id="sheet-notes" class="sheet-textarea"></textarea>
+      <div class="save-row">
+        <button id="sheet-notes-save" class="small-btn" type="button">Save Notes</button>
+        <span id="sheet-notes-status" class="save-status"></span>
+      </div>
+    </div>
+  </template>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/character-sheet.js"></script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Character — Limbus Company: Ignavus</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="site-nav">
+    <a class="site-nav-brand display" href="index.html"><span class="accent-yellow">Limbus Company</span>: <span class="accent">Ignavus</span></a>
+    <div id="nav-account" class="site-nav-account"></div>
+  </header>
+
+  <div class="creator-page">
+    <h1 class="creator-title display">Create Your Character</h1>
+
+    <form id="creator-form" class="creator-form">
+
+      <div class="creator-field">
+        <label for="char-name">Name</label>
+        <input id="char-name" type="text" maxlength="60" required>
+      </div>
+
+      <div class="creator-field">
+        <label for="char-district">Birth District</label>
+        <select id="char-district" required>
+          <option value="" disabled selected>Choose a district</option>
+          <option>A Corp.</option>
+          <option>B Corp.</option>
+          <option>C Corp.</option>
+          <option>D Corp.</option>
+          <option>E Corp.</option>
+          <option>F Corp.</option>
+          <option>G Corp.</option>
+          <option>H Corp.</option>
+          <option>I Corp.</option>
+          <option>J Corp.</option>
+          <option>K Corp.</option>
+          <option>L Corp.</option>
+          <option>M Corp.</option>
+          <option>N Corp.</option>
+          <option>O Corp.</option>
+          <option>P Corp.</option>
+          <option>Q Corp.</option>
+          <option>R Corp.</option>
+          <option>S Corp.</option>
+          <option>T Corp.</option>
+          <option>U Corp.</option>
+          <option>V Corp.</option>
+          <option>W Corp.</option>
+          <option>X Corp.</option>
+          <option>Y Corp.</option>
+          <option>Z Corp.</option>
+        </select>
+      </div>
+
+      <div class="creator-section">
+        <h2 class="creator-section-title display">
+          Stats
+          <span class="points-remaining">Points remaining: <span id="points-remaining">5</span></span>
+        </h2>
+
+        <div class="stat-row" data-stat="fortitude" style="--stat-color: var(--stat-fortitude);">
+          <span class="stat-name display">Fortitude</span>
+          <button type="button" class="stat-btn" data-stat="fortitude" data-action="dec">−</button>
+          <span class="stat-value" id="stat-value-fortitude">1</span>
+          <button type="button" class="stat-btn" data-stat="fortitude" data-action="inc">+</button>
+          <span class="stat-descriptor" id="stat-descriptor-fortitude">Atrocious</span>
+        </div>
+
+        <div class="stat-row" data-stat="prudence" style="--stat-color: var(--stat-prudence);">
+          <span class="stat-name display">Prudence</span>
+          <button type="button" class="stat-btn" data-stat="prudence" data-action="dec">−</button>
+          <span class="stat-value" id="stat-value-prudence">1</span>
+          <button type="button" class="stat-btn" data-stat="prudence" data-action="inc">+</button>
+          <span class="stat-descriptor" id="stat-descriptor-prudence">Atrocious</span>
+        </div>
+
+        <div class="stat-row" data-stat="temperance" style="--stat-color: var(--stat-temperance);">
+          <span class="stat-name display">Temperance</span>
+          <button type="button" class="stat-btn" data-stat="temperance" data-action="dec">−</button>
+          <span class="stat-value" id="stat-value-temperance">1</span>
+          <button type="button" class="stat-btn" data-stat="temperance" data-action="inc">+</button>
+          <span class="stat-descriptor" id="stat-descriptor-temperance">Atrocious</span>
+        </div>
+
+        <div class="stat-row" data-stat="justice" style="--stat-color: var(--stat-justice);">
+          <span class="stat-name display">Justice</span>
+          <button type="button" class="stat-btn" data-stat="justice" data-action="dec">−</button>
+          <span class="stat-value" id="stat-value-justice">1</span>
+          <button type="button" class="stat-btn" data-stat="justice" data-action="inc">+</button>
+          <span class="stat-descriptor" id="stat-descriptor-justice">Atrocious</span>
+        </div>
+      </div>
+
+      <div class="creator-section">
+        <h2 class="creator-section-title display">Starting Items</h2>
+        <p class="creator-note">Every Sinner starts with one Container (for their Lunacy and belongings) and one Weapon. Click cells to set each item's shape in the 6×6 grid — the shapes must be a single connected block.</p>
+
+        <div class="item-builder">
+          <label for="container-name">Container Name</label>
+          <input id="container-name" class="item-name-input" type="text" maxlength="40" placeholder="e.g. Coat Pocket" required>
+          <div id="container-shape" class="shape-grid"></div>
+        </div>
+
+        <div class="item-builder">
+          <label for="weapon-name">Weapon Name</label>
+          <input id="weapon-name" class="item-name-input" type="text" maxlength="40" placeholder="e.g. Fixer Knife" required>
+          <div id="weapon-shape" class="shape-grid"></div>
+        </div>
+      </div>
+
+      <div class="creator-section">
+        <h2 class="creator-section-title display">Story</h2>
+        <textarea id="char-story" class="sheet-textarea" placeholder="Backstory, virtues, flaws..."></textarea>
+      </div>
+
+      <p id="creator-error" class="auth-message is-error"></p>
+
+      <button type="submit" id="creator-submit" class="auth-submit creator-submit">Create Character</button>
+    </form>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/character-creator.js"></script>
+</body>
+</html>
