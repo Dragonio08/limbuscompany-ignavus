@@ -1,5 +1,11 @@
 // Fills in the account area of the navbar depending on whether
 // someone is currently logged in, and keeps it live if that changes.
+if (!window.client) {
+  console.error(
+    "Supabase client is missing. Make sure js/supabase-client.js is loaded before js/navbar.js."
+  );
+}
+var client = window.client;
 
 const navAccount = document.getElementById("nav-account");
 

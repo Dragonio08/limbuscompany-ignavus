@@ -1,5 +1,10 @@
-// Uses the shared `client` created in js/supabase-client.js (loaded first).
-
+// Uses the shared client created in js/supabase-client.js (loaded first).
+if (!window.client) {
+  console.error(
+    "Supabase client is missing. Make sure js/supabase-client.js is loaded before js/auth.js."
+  );
+}
+var client = window.client;
 const form = document.getElementById("auth-form");
 const emailInput = document.getElementById("auth-email");
 const passwordInput = document.getElementById("auth-password");
@@ -30,8 +35,11 @@ function showForm() {
   signedInWrap.style.display = "none";
 }
 
+const headingEl = document.getElementById("auth-heading");
+
 toggleButton.addEventListener("click", () => {
   mode = mode === "login" ? "signup" : "login";
+  headingEl.textContent = mode === "login" ? "Login" : "Sign Up";
   submitButton.textContent = mode === "login" ? "Log In" : "Sign Up";
   toggleButton.textContent =
     mode === "login"
