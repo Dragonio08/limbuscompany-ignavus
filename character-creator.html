@@ -61,37 +61,51 @@
           Stats
           <span class="points-remaining">Points remaining: <span id="points-remaining">7</span></span>
         </h2>
+        <p class="creator-note">Pick 1 signature skill (+2) and 2 proficient skills (+1) across all your skills below. Hover a skill's name for its subtitle.</p>
+        <p class="points-remaining" id="skill-picks-status">Signature: none chosen · Proficient: 0/2 chosen</p>
 
-        <div class="stat-row" data-stat="fortitude" style="--stat-color: var(--stat-fortitude);">
-          <span class="stat-name display">Fortitude</span>
-          <button type="button" class="stat-btn" data-stat="fortitude" data-action="dec">−</button>
-          <span class="stat-value" id="stat-value-fortitude">1</span>
-          <button type="button" class="stat-btn" data-stat="fortitude" data-action="inc">+</button>
-          <span class="stat-descriptor" id="stat-descriptor-fortitude">Atrocious</span>
+        <div class="stat-card">
+          <div class="stat-row" data-stat="fortitude" style="--stat-color: var(--stat-fortitude);">
+            <span class="stat-name display">Fortitude</span>
+            <button type="button" class="stat-btn" data-stat="fortitude" data-action="dec">−</button>
+            <span class="stat-value" id="stat-value-fortitude">1</span>
+            <button type="button" class="stat-btn" data-stat="fortitude" data-action="inc">+</button>
+            <span class="stat-descriptor" id="stat-descriptor-fortitude">Atrocious</span>
+          </div>
+          <div class="skills-list" id="skills-list-fortitude"></div>
         </div>
 
-        <div class="stat-row" data-stat="prudence" style="--stat-color: var(--stat-prudence);">
-          <span class="stat-name display">Prudence</span>
-          <button type="button" class="stat-btn" data-stat="prudence" data-action="dec">−</button>
-          <span class="stat-value" id="stat-value-prudence">1</span>
-          <button type="button" class="stat-btn" data-stat="prudence" data-action="inc">+</button>
-          <span class="stat-descriptor" id="stat-descriptor-prudence">Atrocious</span>
+        <div class="stat-card">
+          <div class="stat-row" data-stat="prudence" style="--stat-color: var(--stat-prudence);">
+            <span class="stat-name display">Prudence</span>
+            <button type="button" class="stat-btn" data-stat="prudence" data-action="dec">−</button>
+            <span class="stat-value" id="stat-value-prudence">1</span>
+            <button type="button" class="stat-btn" data-stat="prudence" data-action="inc">+</button>
+            <span class="stat-descriptor" id="stat-descriptor-prudence">Atrocious</span>
+          </div>
+          <div class="skills-list" id="skills-list-prudence"></div>
         </div>
 
-        <div class="stat-row" data-stat="temperance" style="--stat-color: var(--stat-temperance);">
-          <span class="stat-name display">Temperance</span>
-          <button type="button" class="stat-btn" data-stat="temperance" data-action="dec">−</button>
-          <span class="stat-value" id="stat-value-temperance">1</span>
-          <button type="button" class="stat-btn" data-stat="temperance" data-action="inc">+</button>
-          <span class="stat-descriptor" id="stat-descriptor-temperance">Atrocious</span>
+        <div class="stat-card">
+          <div class="stat-row" data-stat="temperance" style="--stat-color: var(--stat-temperance);">
+            <span class="stat-name display">Temperance</span>
+            <button type="button" class="stat-btn" data-stat="temperance" data-action="dec">−</button>
+            <span class="stat-value" id="stat-value-temperance">1</span>
+            <button type="button" class="stat-btn" data-stat="temperance" data-action="inc">+</button>
+            <span class="stat-descriptor" id="stat-descriptor-temperance">Atrocious</span>
+          </div>
+          <div class="skills-list" id="skills-list-temperance"></div>
         </div>
 
-        <div class="stat-row" data-stat="justice" style="--stat-color: var(--stat-justice);">
-          <span class="stat-name display">Justice</span>
-          <button type="button" class="stat-btn" data-stat="justice" data-action="dec">−</button>
-          <span class="stat-value" id="stat-value-justice">1</span>
-          <button type="button" class="stat-btn" data-stat="justice" data-action="inc">+</button>
-          <span class="stat-descriptor" id="stat-descriptor-justice">Atrocious</span>
+        <div class="stat-card">
+          <div class="stat-row" data-stat="justice" style="--stat-color: var(--stat-justice);">
+            <span class="stat-name display">Justice</span>
+            <button type="button" class="stat-btn" data-stat="justice" data-action="dec">−</button>
+            <span class="stat-value" id="stat-value-justice">1</span>
+            <button type="button" class="stat-btn" data-stat="justice" data-action="inc">+</button>
+            <span class="stat-descriptor" id="stat-descriptor-justice">Atrocious</span>
+          </div>
+          <div class="skills-list" id="skills-list-justice"></div>
         </div>
       </div>
 
@@ -127,6 +141,7 @@
   <script src="js/supabase-config.js"></script>
   <script src="js/supabase-client.js"></script>
   <script src="js/navbar.js"></script>
+  <script src="js/skills-data.js"></script>
   <script src="js/character-creator.js"></script>
 </body>
 </html>

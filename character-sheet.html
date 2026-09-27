@@ -50,25 +50,41 @@
 
     <div class="sheet-section sheet-stats">
       <h2 class="sheet-section-title display">Stats</h2>
-      <div class="stat-row" style="--stat-color: var(--stat-fortitude);">
-        <span class="stat-name display">Fortitude</span>
-        <span class="stat-value" id="sheet-stat-fortitude"></span>
-        <span class="stat-descriptor" id="sheet-descriptor-fortitude"></span>
+
+      <div class="stat-card">
+        <div class="stat-row" style="--stat-color: var(--stat-fortitude);">
+          <span class="stat-name display">Fortitude</span>
+          <span class="stat-value" id="sheet-stat-fortitude"></span>
+          <span class="stat-descriptor" id="sheet-descriptor-fortitude"></span>
+        </div>
+        <div class="skills-list" id="sheet-skills-fortitude"></div>
       </div>
-      <div class="stat-row" style="--stat-color: var(--stat-prudence);">
-        <span class="stat-name display">Prudence</span>
-        <span class="stat-value" id="sheet-stat-prudence"></span>
-        <span class="stat-descriptor" id="sheet-descriptor-prudence"></span>
+
+      <div class="stat-card">
+        <div class="stat-row" style="--stat-color: var(--stat-prudence);">
+          <span class="stat-name display">Prudence</span>
+          <span class="stat-value" id="sheet-stat-prudence"></span>
+          <span class="stat-descriptor" id="sheet-descriptor-prudence"></span>
+        </div>
+        <div class="skills-list" id="sheet-skills-prudence"></div>
       </div>
-      <div class="stat-row" style="--stat-color: var(--stat-temperance);">
-        <span class="stat-name display">Temperance</span>
-        <span class="stat-value" id="sheet-stat-temperance"></span>
-        <span class="stat-descriptor" id="sheet-descriptor-temperance"></span>
+
+      <div class="stat-card">
+        <div class="stat-row" style="--stat-color: var(--stat-temperance);">
+          <span class="stat-name display">Temperance</span>
+          <span class="stat-value" id="sheet-stat-temperance"></span>
+          <span class="stat-descriptor" id="sheet-descriptor-temperance"></span>
+        </div>
+        <div class="skills-list" id="sheet-skills-temperance"></div>
       </div>
-      <div class="stat-row" style="--stat-color: var(--stat-justice);">
-        <span class="stat-name display">Justice</span>
-        <span class="stat-value" id="sheet-stat-justice"></span>
-        <span class="stat-descriptor" id="sheet-descriptor-justice"></span>
+
+      <div class="stat-card">
+        <div class="stat-row" style="--stat-color: var(--stat-justice);">
+          <span class="stat-name display">Justice</span>
+          <span class="stat-value" id="sheet-stat-justice"></span>
+          <span class="stat-descriptor" id="sheet-descriptor-justice"></span>
+        </div>
+        <div class="skills-list" id="sheet-skills-justice"></div>
       </div>
     </div>
 
@@ -84,6 +100,14 @@
           <input id="item-money-input" type="number" min="0" step="1">
           <button id="item-money-save" class="small-btn" type="button">Save</button>
           <span id="item-money-status" class="save-status"></span>
+        </div>
+        <div class="item-description-row">
+          <label for="item-description-input">Description</label>
+          <textarea id="item-description-input" class="sheet-textarea item-description-textarea"></textarea>
+          <div class="save-row">
+            <button id="item-description-save" class="small-btn" type="button">Save Description</button>
+            <span id="item-description-status" class="save-status"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -111,6 +135,7 @@
   <script src="js/supabase-config.js"></script>
   <script src="js/supabase-client.js"></script>
   <script src="js/navbar.js"></script>
+  <script src="js/skills-data.js"></script>
   <script src="js/character-sheet.js"></script>
 </body>
 </html>
