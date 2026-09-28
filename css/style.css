@@ -1283,3 +1283,262 @@ body::before {
   margin: 0;
   color: var(--ink);
 }
+
+/* ---------- Story zone (visually separates story from gameplay) ---------- */
+
+.story-zone {
+  margin-top: 2.2rem;
+  padding: 1.4rem 1.4rem 0.4rem;
+  background: #1a1011;
+  border: 1px solid #3a1c22;
+  border-top: 2px solid var(--crimson);
+}
+
+.story-zone .sheet-section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.small-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---------- Weapon skills panel ---------- */
+
+.weapon-skills-section {
+  border-top: 1px solid var(--line);
+  margin-top: 1.2rem;
+  padding-top: 1.1rem;
+}
+
+.weapon-skills-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.weapon-skills-title {
+  font-size: 1.2rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+  margin-right: auto;
+}
+
+/* ---------- Ruina-style cards ---------- */
+
+.ruina-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1.2rem;
+  padding: 0.8rem 0 0 0.8rem;
+}
+
+.ruina-card {
+  --card-color: var(--gold);
+  --card-ink: #0a0908;
+  position: relative;
+  min-height: 225px;
+  padding: 0.55rem 0.55rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: linear-gradient(180deg, #1d1816 0%, #0e0c0b 100%);
+  border: 2px solid var(--card-color);
+  box-shadow: inset 0 0 0 3px #0a0908, inset 0 0 0 4px var(--card-color);
+  text-align: center;
+  transition: transform 0.15s ease;
+}
+
+.ruina-card-red { --card-color: var(--stat-fortitude); --card-ink: #fff; }
+.ruina-card-white { --card-color: var(--stat-prudence); }
+.ruina-card-black { --card-color: #8a8580; }
+.ruina-card-pale { --card-color: var(--stat-justice); }
+.ruina-card-none { --card-color: var(--gold); }
+
+.ruina-card.is-clickable {
+  cursor: pointer;
+}
+
+.ruina-card.is-clickable:hover,
+.ruina-card.is-clickable:focus-visible {
+  transform: translateY(-3px);
+  outline: 2px solid var(--yellow);
+  outline-offset: 2px;
+}
+
+.ruina-card-cost {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  width: 36px;
+  height: 40px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: var(--card-color);
+  color: var(--card-ink);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.ruina-card-name {
+  font-size: 1.05rem;
+  line-height: 1.1;
+  margin: 0;
+  padding: 0 0.2rem 0 1.5rem;
+  min-height: 1.4rem;
+}
+
+.ruina-card-art {
+  height: 72px;
+  border: 1px solid var(--card-color);
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.1), transparent 70%),
+    linear-gradient(135deg, #14100f, #24191a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.15em;
+  font-size: 1.3rem;
+  color: var(--card-color);
+}
+
+.ruina-card-effects {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid #2a2622;
+  padding: 0.4rem 0.45rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  text-align: left;
+  color: var(--ink);
+}
+
+.ruina-card-effects p {
+  margin: 0 0 0.25rem;
+}
+
+.ruina-card-effects .is-damage {
+  color: var(--card-color);
+}
+
+/* ---------- Skill editor ---------- */
+
+.skill-editor {
+  margin-top: 1.4rem;
+  border: 1px solid var(--line);
+  background: #0e0c0b;
+  padding: 1rem 1.1rem;
+}
+
+.skill-editor-title {
+  font-size: 1.2rem;
+  margin: 0 0 0.8rem;
+}
+
+.skill-editor-body {
+  display: flex;
+  gap: 1.4rem;
+  flex-wrap: wrap;
+}
+
+.skill-editor-form {
+  flex: 1;
+  min-width: 260px;
+}
+
+.skill-editor-preview {
+  width: 175px;
+  padding: 14px 0 0 14px;
+}
+
+.skill-points {
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+.skill-points.is-over {
+  color: var(--crimson-bright);
+}
+
+.skill-points-breakdown {
+  color: var(--ink-dim);
+  font-style: italic;
+  font-size: 0.85rem;
+  margin: 0 0 0.8rem;
+}
+
+.skill-attr-title {
+  font-size: 1.05rem;
+  color: var(--ink-dim);
+  margin: 0.6rem 0 0.3rem;
+}
+
+.attr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.attr-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+}
+
+.attr-label {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.03em;
+  min-width: 7.5rem;
+}
+
+.attr-row input,
+.attr-row select,
+.skill-add-row select {
+  font-family: 'Times New Roman', Times, serif;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.3rem 0.5rem;
+}
+
+.attr-row input[type="number"] {
+  width: 4.5rem;
+}
+
+.attr-min {
+  color: var(--ink-dim);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.attr-result {
+  color: var(--yellow);
+  font-size: 0.9rem;
+  margin-left: auto;
+}
+
+.skill-add-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.skill-editor-error {
+  color: var(--crimson-bright);
+  min-height: 1.3rem;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
