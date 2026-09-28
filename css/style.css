@@ -1156,3 +1156,111 @@ body::before {
   color: var(--ink-dim);
   margin-bottom: 0.4rem;
 }
+
+/* ---------- Vitals (HP / SP / Speed) ---------- */
+
+.vitals {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.creator-vitals {
+  margin-bottom: 1.2rem;
+}
+
+.vitals-bars {
+  flex: 1;
+  min-width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.vital-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.vital-label {
+  width: 2rem;
+  font-size: 1.2rem;
+}
+
+.vital-bar-track {
+  flex: 1;
+  height: 18px;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.vital-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.vital-hp {
+  background: var(--stat-fortitude);
+}
+
+.vital-sp {
+  background: var(--stat-justice);
+}
+
+.vital-text {
+  min-width: 5.5rem;
+  text-align: right;
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+}
+
+.vital-dm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  padding-left: 2.7rem;
+}
+
+.vital-dm input {
+  width: 4.5rem;
+  font-family: 'Times New Roman', Times, serif;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.4rem 0.6rem;
+}
+
+.speed-box {
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  padding: 0.8rem 1.4rem;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.speed-label {
+  font-size: 1rem;
+  color: var(--ink-dim);
+}
+
+.speed-value {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.6rem;
+  line-height: 1.1;
+  color: var(--yellow);
+}
+
+.speed-unit {
+  font-style: italic;
+  color: var(--ink-dim);
+  font-size: 0.8rem;
+}
