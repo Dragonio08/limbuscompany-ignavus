@@ -1060,3 +1060,99 @@ body::before {
   font-style: italic;
   font-size: 0.9rem;
 }
+
+/* ---------- Sheet tabs (Innocence / E.G.O) ---------- */
+
+.sheet-tabs {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1.8rem;
+}
+
+.sheet-tab {
+  flex: 1;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.4rem;
+  letter-spacing: 0.06em;
+  padding: 0.7rem 1rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: border-color 0.25s ease, color 0.25s ease, background 0.25s ease;
+}
+
+.sheet-tab:hover,
+.sheet-tab:focus-visible {
+  color: var(--ink);
+  border-color: var(--gold);
+}
+
+.sheet-tab.is-active {
+  color: #fff;
+  background: #171213;
+  border-color: var(--crimson-bright);
+}
+
+/* ---------- E.G.O ---------- */
+
+.ego-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.ego-slots-summary {
+  color: var(--ink-dim);
+  font-style: italic;
+  margin-right: auto;
+}
+
+.ego-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ego-slot {
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  padding: 1rem 1.2rem;
+}
+
+.ego-slot-label {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.04em;
+  font-size: 0.95rem;
+  color: var(--gold);
+  margin: 0 0 0.5rem;
+}
+
+.ego-name {
+  font-size: 1.4rem;
+  color: var(--yellow);
+  margin: 0 0 0.3rem;
+}
+
+.ego-description {
+  color: var(--ink);
+  margin: 0 0 0.8rem;
+  white-space: pre-wrap;
+}
+
+.ego-empty {
+  color: var(--ink-dim);
+  font-style: italic;
+  margin: 0 0 0.8rem;
+}
+
+.ego-form label {
+  display: block;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.04em;
+  font-size: 1rem;
+  color: var(--ink-dim);
+  margin-bottom: 0.4rem;
+}
