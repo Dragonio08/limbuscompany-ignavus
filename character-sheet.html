@@ -21,6 +21,13 @@
     <h1 id="sheet-name" class="sheet-name display"></h1>
     <p id="sheet-district" class="sheet-meta"></p>
 
+    <div class="sheet-tabs" role="tablist">
+      <button id="tab-btn-innocence" class="sheet-tab is-active" type="button" role="tab" aria-selected="true">Innocence</button>
+      <button id="tab-btn-ego" class="sheet-tab" type="button" role="tab" aria-selected="false">E.G.O</button>
+    </div>
+
+    <div id="tab-innocence">
+
     <div class="sheet-section">
       <h2 class="sheet-section-title display">Level &amp; Experience</h2>
       <div class="level-row">
@@ -127,6 +134,19 @@
       <div class="save-row">
         <button id="sheet-notes-save" class="small-btn" type="button">Save Notes</button>
         <span id="sheet-notes-status" class="save-status"></span>
+      </div>
+    </div>
+    </div>
+
+    <div id="tab-ego" style="display: none;">
+      <div class="sheet-section">
+        <h2 class="sheet-section-title display">E.G.O</h2>
+        <div class="ego-header">
+          <span id="ego-slots-summary" class="ego-slots-summary"></span>
+          <button id="ego-add-slot" class="small-btn" type="button" style="display: none;">+ Add Slot</button>
+          <span id="ego-slot-status" class="save-status"></span>
+        </div>
+        <div id="ego-slot-list" class="ego-slot-list"></div>
       </div>
     </div>
   </template>
