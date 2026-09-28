@@ -64,6 +64,26 @@
         <p class="creator-note">Pick 1 signature skill (+2) and 2 proficient skills (+1) across all your skills below. Hover a skill's name for its subtitle.</p>
         <p class="points-remaining" id="skill-picks-status">Signature: none chosen · Proficient: 0/2 chosen</p>
 
+        <div class="vitals creator-vitals">
+          <div class="vitals-bars">
+            <div class="vital-row">
+              <span class="vital-label display">HP</span>
+              <div class="vital-bar-track"><div class="vital-bar-fill vital-hp" style="width: 100%;"></div></div>
+              <span id="vitals-hp-text" class="vital-text"></span>
+            </div>
+            <div class="vital-row">
+              <span class="vital-label display">SP</span>
+              <div class="vital-bar-track"><div class="vital-bar-fill vital-sp" style="width: 100%;"></div></div>
+              <span id="vitals-sp-text" class="vital-text"></span>
+            </div>
+          </div>
+          <div class="speed-box" title="Tiles you can move in any direction">
+            <span class="speed-label display">Speed</span>
+            <span id="vitals-speed" class="speed-value">1</span>
+            <span class="speed-unit">tiles, any direction</span>
+          </div>
+        </div>
+
         <div class="stat-card">
           <div class="stat-row" data-stat="fortitude" style="--stat-color: var(--stat-fortitude);">
             <span class="stat-name display">Fortitude</span>

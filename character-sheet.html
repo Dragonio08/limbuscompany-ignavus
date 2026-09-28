@@ -29,6 +29,45 @@
     <div id="tab-innocence">
 
     <div class="sheet-section">
+      <h2 class="sheet-section-title display">Vitals</h2>
+      <div class="vitals">
+        <div class="vitals-bars">
+          <div class="vital-block">
+            <div class="vital-row">
+              <span class="vital-label display">HP</span>
+              <div class="vital-bar-track"><div id="sheet-hp-bar" class="vital-bar-fill vital-hp" style="width: 100%;"></div></div>
+              <span id="sheet-hp-text" class="vital-text"></span>
+            </div>
+            <div id="hp-dm-controls" class="vital-dm" style="display: none;">
+              <input id="hp-amount" type="number" min="1" value="1" aria-label="HP amount">
+              <button id="hp-hurt" class="small-btn" type="button">Hurt</button>
+              <button id="hp-heal" class="small-btn" type="button">Heal</button>
+              <span id="hp-status" class="save-status"></span>
+            </div>
+          </div>
+          <div class="vital-block">
+            <div class="vital-row">
+              <span class="vital-label display">SP</span>
+              <div class="vital-bar-track"><div id="sheet-sp-bar" class="vital-bar-fill vital-sp" style="width: 100%;"></div></div>
+              <span id="sheet-sp-text" class="vital-text"></span>
+            </div>
+            <div id="sp-dm-controls" class="vital-dm" style="display: none;">
+              <input id="sp-amount" type="number" min="1" value="1" aria-label="SP amount">
+              <button id="sp-hurt" class="small-btn" type="button">Hurt</button>
+              <button id="sp-heal" class="small-btn" type="button">Heal</button>
+              <span id="sp-status" class="save-status"></span>
+            </div>
+          </div>
+        </div>
+        <div class="speed-box" title="Tiles you can move in any direction">
+          <span class="speed-label display">Speed</span>
+          <span id="sheet-speed" class="speed-value">1</span>
+          <span class="speed-unit">tiles, any direction</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-section">
       <h2 class="sheet-section-title display">Level &amp; Experience</h2>
       <div class="level-row">
         <span class="display">Level</span>
@@ -143,6 +182,7 @@
         <h2 class="sheet-section-title display">E.G.O</h2>
         <div class="ego-header">
           <span id="ego-slots-summary" class="ego-slots-summary"></span>
+          <button id="ego-remove-slot" class="small-btn" type="button" style="display: none;">− Remove Slot</button>
           <button id="ego-add-slot" class="small-btn" type="button" style="display: none;">+ Add Slot</button>
           <span id="ego-slot-status" class="save-status"></span>
         </div>
