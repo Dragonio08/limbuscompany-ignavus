@@ -110,3 +110,23 @@ const SKILLS = {
 };
 
 const ARCHETYPES = ["fortitude", "prudence", "temperance", "justice"];
+
+// ---- Derived stats (shared by the creator and the sheet) ----
+// All divisions round down.
+
+// HP = (98 + Weathering) + ((2.0 + 0.2 * Weathering) * Level)
+// (2.0 + 0.2 * W) equals (10 + W) / 5, so this is done in whole numbers
+// to avoid floating-point rounding surprises.
+function calcMaxHp(weathering, level) {
+  return 98 + weathering + Math.floor(((10 + weathering) * level) / 5);
+}
+
+// SP = (10 + Will to Power) + (Level / 2)
+function calcMaxSp(willToPower, level) {
+  return 10 + willToPower + Math.floor(level / 2);
+}
+
+// Speed (tiles in any direction) = 1 + (Adaptability / 2)
+function calcSpeed(adaptability) {
+  return 1 + Math.floor(adaptability / 2);
+}

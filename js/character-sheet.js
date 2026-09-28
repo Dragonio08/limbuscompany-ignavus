@@ -104,6 +104,7 @@ function renderSheet() {
   wireTabs();
   renderEgo();
   wireEgoSlotButton();
+  wireVitals();
 }
 
 // ---- Level & XP ----
@@ -113,6 +114,7 @@ function renderLevelXp() {
   document.getElementById("sheet-xp-input").value = character.xp;
   document.getElementById("sheet-xp-bar").style.width = `${character.xp}%`;
   document.getElementById("xp-edit-controls").style.display = isDm ? "flex" : "none";
+  renderVitals();
 }
 
 function wireLevelXp() {
@@ -611,14 +613,15 @@ function getEgoSlots() {
 }
 
 function wireEgoSlotButton() {
-  const btn = document.getElementById("ego-add-slot");
-  btn.style.display = isDm ? "inline-block" : "none";
+  const addBtn = document.getElementById("ego-add-slot");
+  const removeBtn = document.getElementById("ego-remove-slot");
+  addBtn.style.display = isDm ? "inline-block" : "none";
+  removeBtn.style.display = isDm ? "inline-block" : "none";
   if (!isDm) return;
 
-  btn.addEventListener("click", async () => {
-    const statusEl = document.getElementById("ego-slot-status");
-    const newSlots = getEgoSlots() + 1;
+  const statusEl = document.getElementById("ego-slot-status");
 
+  async function setSlots(newSlots, doneMessage) {
     const { error } = await client
       .from("characters")
       .update({ ego_slots: newSlots })
@@ -630,8 +633,25 @@ function wireEgoSlotButton() {
     }
 
     character.ego_slots = newSlots;
-    statusEl.textContent = "Slot added.";
+    statusEl.textContent = doneMessage;
     renderEgo();
+  }
+
+  addBtn.addEventListener("click", () => {
+    setSlots(getEgoSlots() + 1, "Slot added.");
+  });
+
+  removeBtn.addEventListener("click", () => {
+    const newSlots = getEgoSlots() - 1;
+    if (newSlots < 1) {
+      statusEl.textContent = "A character needs at least 1 slot.";
+      return;
+    }
+    if (newSlots < getEgos().length) {
+      statusEl.textContent = "Every slot is in use — remove an E.G.O first.";
+      return;
+    }
+    setSlots(newSlots, "Slot removed.");
   });
 }
 
@@ -811,6 +831,93 @@ function buildEgoForm(index, ego, status) {
   form.appendChild(descInput);
   form.appendChild(row);
   return form;
+}
+
+
+// ---- Vitals: HP, SP, Speed ----
+// Max HP/SP/Speed are calculated from Level and skill values (see
+// skills-data.js). Only the *current* HP/SP are stored (null = full),
+// and only a DM can change them.
+
+function characterSkillValue(archetype, skillKey) {
+  const base = character[archetype];
+  const picks = character.skill_picks || {};
+  if (picks.signature === skillKey) return base + 2;
+  if ((picks.proficient || []).includes(skillKey)) return base + 1;
+  return base;
+}
+
+function getVitals() {
+  const weathering = characterSkillValue("fortitude", "weathering");
+  const willToPower = characterSkillValue("temperance", "will_to_power");
+  const adaptability = characterSkillValue("fortitude", "adaptability");
+
+  return {
+    maxHp: calcMaxHp(weathering, character.level),
+    maxSp: calcMaxSp(willToPower, character.level),
+    speed: calcSpeed(adaptability),
+  };
+}
+
+function currentVital(kind) {
+  const { maxHp, maxSp } = getVitals();
+  const max = kind === "hp" ? maxHp : maxSp;
+  const stored = character[`${kind}_current`];
+  if (stored === null || stored === undefined) return max;
+  return Math.max(0, Math.min(stored, max));
+}
+
+function renderVitals() {
+  const { maxHp, maxSp, speed } = getVitals();
+
+  [["hp", maxHp], ["sp", maxSp]].forEach(([kind, max]) => {
+    const current = currentVital(kind);
+    const pct = max > 0 ? (current / max) * 100 : 0;
+    document.getElementById(`sheet-${kind}-bar`).style.width = `${pct}%`;
+    document.getElementById(`sheet-${kind}-text`).textContent = `${current} / ${max}`;
+  });
+
+  document.getElementById("sheet-speed").textContent = speed;
+}
+
+function wireVitals() {
+  ["hp", "sp"].forEach((kind) => {
+    const controls = document.getElementById(`${kind}-dm-controls`);
+    controls.style.display = isDm ? "flex" : "none";
+    if (!isDm) return;
+
+    const amountInput = document.getElementById(`${kind}-amount`);
+    const statusEl = document.getElementById(`${kind}-status`);
+
+    async function change(direction) {
+      const amount = parseInt(amountInput.value, 10);
+      if (Number.isNaN(amount) || amount < 1) {
+        statusEl.textContent = "Enter an amount of 1 or more.";
+        return;
+      }
+
+      const { maxHp, maxSp } = getVitals();
+      const max = kind === "hp" ? maxHp : maxSp;
+      const next = Math.max(0, Math.min(max, currentVital(kind) + direction * amount));
+
+      const { error } = await client
+        .from("characters")
+        .update({ [`${kind}_current`]: next })
+        .eq("id", character.id);
+
+      if (error) {
+        statusEl.textContent = "Couldn't save: " + error.message;
+        return;
+      }
+
+      character[`${kind}_current`] = next;
+      statusEl.textContent = "";
+      renderVitals();
+    }
+
+    document.getElementById(`${kind}-hurt`).addEventListener("click", () => change(-1));
+    document.getElementById(`${kind}-heal`).addEventListener("click", () => change(1));
+  });
 }
 
 loadCharacter();

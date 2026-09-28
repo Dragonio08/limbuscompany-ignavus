@@ -181,9 +181,24 @@ function renderSkillsForArchetype(archetype) {
   });
 }
 
+// New characters start at level 1, at full HP and SP.
+function updateVitalsPreview() {
+  const weathering = skillValue("fortitude", "weathering");
+  const willToPower = skillValue("temperance", "will_to_power");
+  const adaptability = skillValue("fortitude", "adaptability");
+
+  const maxHp = calcMaxHp(weathering, 1);
+  const maxSp = calcMaxSp(willToPower, 1);
+
+  document.getElementById("vitals-hp-text").textContent = `${maxHp} / ${maxHp}`;
+  document.getElementById("vitals-sp-text").textContent = `${maxSp} / ${maxSp}`;
+  document.getElementById("vitals-speed").textContent = calcSpeed(adaptability);
+}
+
 function renderAllSkills() {
   ARCHETYPES.forEach(renderSkillsForArchetype);
   updateSkillPicksStatus();
+  updateVitalsPreview();
 }
 
 renderAllSkills();
