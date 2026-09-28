@@ -101,6 +101,9 @@ function renderSheet() {
   wireClassification();
   wireStory();
   wireNotes();
+  wireTabs();
+  renderEgo();
+  wireEgoSlotButton();
 }
 
 // ---- Level & XP ----
@@ -563,6 +566,251 @@ function wireNotes() {
     status.textContent = error ? "Couldn't save: " + error.message : "Saved.";
     if (!error) character.notes = notes;
   });
+}
+
+
+// ---- Tabs (Innocence / E.G.O) ----
+
+function wireTabs() {
+  const tabs = {
+    innocence: {
+      btn: document.getElementById("tab-btn-innocence"),
+      panel: document.getElementById("tab-innocence"),
+    },
+    ego: {
+      btn: document.getElementById("tab-btn-ego"),
+      panel: document.getElementById("tab-ego"),
+    },
+  };
+
+  function showTab(name) {
+    Object.entries(tabs).forEach(([key, { btn, panel }]) => {
+      const active = key === name;
+      panel.style.display = active ? "block" : "none";
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+    });
+  }
+
+  tabs.innocence.btn.addEventListener("click", () => showTab("innocence"));
+  tabs.ego.btn.addEventListener("click", () => showTab("ego"));
+}
+
+// ---- E.G.O ----
+// Each character starts with 1 slot (ego_slots). Only a DM can add more.
+// egos is a compact array of { id, name, description }; slot i shows egos[i].
+
+let editingEgoIndex = null;
+
+function getEgos() {
+  return character.egos || [];
+}
+
+function getEgoSlots() {
+  return character.ego_slots || 1;
+}
+
+function wireEgoSlotButton() {
+  const btn = document.getElementById("ego-add-slot");
+  btn.style.display = isDm ? "inline-block" : "none";
+  if (!isDm) return;
+
+  btn.addEventListener("click", async () => {
+    const statusEl = document.getElementById("ego-slot-status");
+    const newSlots = getEgoSlots() + 1;
+
+    const { error } = await client
+      .from("characters")
+      .update({ ego_slots: newSlots })
+      .eq("id", character.id);
+
+    if (error) {
+      statusEl.textContent = "Couldn't save: " + error.message;
+      return;
+    }
+
+    character.ego_slots = newSlots;
+    statusEl.textContent = "Slot added.";
+    renderEgo();
+  });
+}
+
+async function saveEgos(newEgos, statusEl) {
+  const { error } = await client
+    .from("characters")
+    .update({ egos: newEgos })
+    .eq("id", character.id);
+
+  if (error) {
+    statusEl.textContent = "Couldn't save: " + error.message;
+    return false;
+  }
+
+  character.egos = newEgos;
+  return true;
+}
+
+function renderEgo() {
+  const list = document.getElementById("ego-slot-list");
+  const summary = document.getElementById("ego-slots-summary");
+  const egos = getEgos();
+  const slots = getEgoSlots();
+  const canEdit = isOwner || isDm;
+
+  summary.textContent = `Slots used: ${egos.length} / ${slots}`;
+  list.innerHTML = "";
+
+  for (let i = 0; i < slots; i++) {
+    const ego = egos[i];
+    const card = document.createElement("div");
+    card.className = "ego-slot";
+
+    const slotLabel = document.createElement("p");
+    slotLabel.className = "ego-slot-label";
+    slotLabel.textContent = `Slot ${i + 1}`;
+    card.appendChild(slotLabel);
+
+    const status = document.createElement("span");
+    status.className = "save-status";
+
+    if (editingEgoIndex === i && canEdit) {
+      card.appendChild(buildEgoForm(i, ego, status));
+    } else if (ego) {
+      const name = document.createElement("p");
+      name.className = "ego-name display";
+      name.textContent = ego.name;
+
+      const desc = document.createElement("p");
+      desc.className = "ego-description";
+      desc.textContent = ego.description || "No description.";
+
+      card.appendChild(name);
+      card.appendChild(desc);
+
+      if (canEdit) {
+        const row = document.createElement("div");
+        row.className = "save-row";
+
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.className = "small-btn";
+        editBtn.textContent = "Edit";
+        editBtn.addEventListener("click", () => {
+          editingEgoIndex = i;
+          renderEgo();
+        });
+
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "small-btn";
+        removeBtn.textContent = "Remove";
+        removeBtn.addEventListener("click", async () => {
+          const confirmed = window.confirm(
+            `Remove the E.G.O "${ego.name}"? This frees up the slot.`
+          );
+          if (!confirmed) return;
+          const newEgos = egos.filter((_, idx) => idx !== i);
+          if (await saveEgos(newEgos, status)) renderEgo();
+        });
+
+        row.appendChild(editBtn);
+        row.appendChild(removeBtn);
+        row.appendChild(status);
+        card.appendChild(row);
+      }
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "ego-empty";
+      empty.textContent = "Empty slot";
+      card.appendChild(empty);
+
+      if (canEdit) {
+        const addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.className = "small-btn";
+        addBtn.textContent = "Add E.G.O +";
+        addBtn.addEventListener("click", () => {
+          editingEgoIndex = i;
+          renderEgo();
+        });
+        card.appendChild(addBtn);
+      }
+    }
+
+    list.appendChild(card);
+  }
+}
+
+function buildEgoForm(index, ego, status) {
+  const form = document.createElement("div");
+  form.className = "ego-form";
+
+  const nameLabel = document.createElement("label");
+  nameLabel.textContent = "Name";
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.maxLength = 60;
+  nameInput.className = "item-name-input";
+  nameInput.value = ego ? ego.name : "";
+
+  const descLabel = document.createElement("label");
+  descLabel.textContent = "Description";
+  const descInput = document.createElement("textarea");
+  descInput.className = "sheet-textarea item-description-textarea";
+  descInput.value = ego ? ego.description || "" : "";
+
+  const row = document.createElement("div");
+  row.className = "save-row";
+
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "small-btn";
+  saveBtn.textContent = "Save E.G.O";
+  saveBtn.addEventListener("click", async () => {
+    const name = nameInput.value.trim();
+    if (!name) {
+      status.textContent = "Give your E.G.O a name.";
+      return;
+    }
+
+    const egos = [...getEgos()];
+    const entry = {
+      id: ego ? ego.id : crypto.randomUUID(),
+      name,
+      description: descInput.value,
+    };
+
+    if (index < egos.length) {
+      egos[index] = entry;
+    } else {
+      egos.push(entry);
+    }
+
+    if (await saveEgos(egos, status)) {
+      editingEgoIndex = null;
+      renderEgo();
+    }
+  });
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "small-btn";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => {
+    editingEgoIndex = null;
+    renderEgo();
+  });
+
+  row.appendChild(saveBtn);
+  row.appendChild(cancelBtn);
+  row.appendChild(status);
+
+  form.appendChild(nameLabel);
+  form.appendChild(nameInput);
+  form.appendChild(descLabel);
+  form.appendChild(descInput);
+  form.appendChild(row);
+  return form;
 }
 
 loadCharacter();
