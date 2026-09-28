@@ -93,6 +93,7 @@ function renderSheet() {
   renderClassification();
   renderStats();
   renderInventory();
+  renderPanicType();
 
   document.getElementById("sheet-story").value = character.story || "";
   document.getElementById("sheet-notes").value = character.notes || "";
@@ -918,6 +919,29 @@ function wireVitals() {
     document.getElementById(`${kind}-hurt`).addEventListener("click", () => change(-1));
     document.getElementById(`${kind}-heal`).addEventListener("click", () => change(1));
   });
+}
+
+
+// ---- Panic type (decided by the signature skill's archetype) ----
+
+function renderPanicType() {
+  const nameEl = document.getElementById("panic-name");
+  const descEl = document.getElementById("panic-description");
+
+  const signature = (character.skill_picks || {}).signature;
+  const archetype = signature ? archetypeOfSkill(signature) : null;
+  const panic = archetype ? PANIC_TYPES[archetype] : null;
+
+  if (!panic) {
+    nameEl.textContent = "None";
+    nameEl.style.color = "";
+    descEl.textContent = "This character has no signature skill, so no panic type.";
+    return;
+  }
+
+  nameEl.textContent = panic.name;
+  nameEl.style.color = `var(--stat-${archetype})`;
+  descEl.textContent = panic.description;
 }
 
 loadCharacter();

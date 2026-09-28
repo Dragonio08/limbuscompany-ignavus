@@ -126,7 +126,43 @@ function calcMaxSp(willToPower, level) {
   return 10 + willToPower + Math.floor(level / 2);
 }
 
-// Speed (tiles in any direction) = 1 + (Adaptability / 2)
+// Speed (tiles in any direction) = 3 + (Adaptability / 2)
 function calcSpeed(adaptability) {
-  return 1 + Math.floor(adaptability / 2);
+  return 3 + Math.floor(adaptability / 2);
+}
+
+// ---- Panic types ----
+// Decided by which archetype the character's signature skill belongs to.
+
+const PANIC_TYPES = {
+  fortitude: {
+    name: "Murder",
+    description:
+      "When the character's SP hits 0, the player becomes unable to choose any attacks to be done, and the character will randomly start attacking with random attacks.",
+  },
+  prudence: {
+    name: "Suicide",
+    description:
+      "When the character's SP hits 0, the player has 2 turns to heal the SP back to full before the character kills themselves.",
+  },
+  temperance: {
+    name: "Wander",
+    description:
+      "When the character's SP hits 0, the panicking character will move randomly around the map, and when near any ally, that ally will lose 10 SP at the start of their turn.",
+  },
+  justice: {
+    name: "Sabotage",
+    description:
+      "When the character's SP hits 0, they will corrode into a random E.G.O they have and hit as many random units as they can.",
+  },
+};
+
+// Returns the archetype key ("fortitude", ...) that owns a skill, or null.
+function archetypeOfSkill(skillKey) {
+  for (const archetype of ARCHETYPES) {
+    if (SKILLS[archetype].some((skill) => skill.key === skillKey)) {
+      return archetype;
+    }
+  }
+  return null;
 }
