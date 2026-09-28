@@ -535,6 +535,8 @@ function showItemDetail(item) {
     item.description = description;
     descStatus.textContent = "Saved.";
   });
+
+  renderWeaponSkills(item);
 }
 
 // ---- Story & Notes ----
@@ -942,6 +944,141 @@ function renderPanicType() {
   nameEl.textContent = panic.name;
   nameEl.style.color = `var(--stat-${archetype})`;
   descEl.textContent = panic.description;
+}
+
+
+// ---- Weapon skills (shown in the weapon's menu) ----
+// Stored inside the weapon's inventory item as `skills`, so no extra
+// database column is needed. Rules and card rendering: js/weapon-skills.js.
+
+let currentWeaponId = null;
+
+function getWeaponById(id) {
+  return (character.inventory || []).find((i) => i.id === id);
+}
+
+function closeSkillEditor() {
+  const el = document.getElementById("weapon-skill-editor");
+  if (!el) return;
+  el.innerHTML = "";
+  el.style.display = "none";
+}
+
+function renderWeaponSkills(item) {
+  const section = document.getElementById("weapon-skills-section");
+
+  if (item.type !== "weapon") {
+    section.style.display = "none";
+    currentWeaponId = null;
+    return;
+  }
+
+  currentWeaponId = item.id;
+  section.style.display = "block";
+  closeSkillEditor();
+  document.getElementById("weapon-skill-status").textContent = "";
+
+  const canEdit = isOwner || isDm;
+  const oldBtn = document.getElementById("weapon-skill-add");
+  const addBtn = oldBtn.cloneNode(true); // clear old listeners
+  oldBtn.parentNode.replaceChild(addBtn, oldBtn);
+  addBtn.style.display = canEdit ? "inline-block" : "none";
+  addBtn.addEventListener("click", () => openWeaponSkillEditor(null));
+
+  renderSkillGrid();
+}
+
+function renderSkillGrid() {
+  const weapon = getWeaponById(currentWeaponId);
+  if (!weapon) return;
+
+  const skills = weapon.skills || [];
+  const canEdit = isOwner || isDm;
+
+  document.getElementById("weapon-skills-count").textContent =
+    `(${skills.length}/${MAX_SKILLS_PER_WEAPON})`;
+  document.getElementById("weapon-skill-add").disabled =
+    skills.length >= MAX_SKILLS_PER_WEAPON;
+
+  const grid = document.getElementById("weapon-skill-grid");
+  grid.innerHTML = "";
+
+  if (skills.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "ego-empty";
+    empty.textContent = "No skills yet.";
+    grid.appendChild(empty);
+    return;
+  }
+
+  skills.forEach((skill) => {
+    const card = buildRuinaCard(skill);
+    if (canEdit) {
+      card.classList.add("is-clickable");
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", `Edit skill ${skill.name}`);
+      card.addEventListener("click", () => openWeaponSkillEditor(skill));
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openWeaponSkillEditor(skill);
+        }
+      });
+    }
+    grid.appendChild(card);
+  });
+}
+
+async function saveWeaponSkills(weaponId, skills) {
+  const statusEl = document.getElementById("weapon-skill-status");
+  const updatedInventory = character.inventory.map((invItem) =>
+    invItem.id === weaponId ? { ...invItem, skills } : invItem
+  );
+
+  const { error } = await client
+    .from("characters")
+    .update({ inventory: updatedInventory })
+    .eq("id", character.id);
+
+  if (error) {
+    statusEl.textContent = "Couldn't save: " + error.message;
+    return false;
+  }
+
+  character.inventory = updatedInventory;
+  statusEl.textContent = "Saved.";
+  renderSkillGrid();
+  return true;
+}
+
+function openWeaponSkillEditor(skill) {
+  const weapon = getWeaponById(currentWeaponId);
+  if (!weapon || !(isOwner || isDm)) return;
+  if (!skill && (weapon.skills || []).length >= MAX_SKILLS_PER_WEAPON) return;
+
+  openSkillEditor({
+    container: document.getElementById("weapon-skill-editor"),
+    skill,
+    weaponTiles: weapon.cells.length,
+    onSave: async (saved) => {
+      const list = [...(getWeaponById(weapon.id).skills || [])];
+      const index = list.findIndex((s) => s.id === saved.id);
+      if (index >= 0) {
+        list[index] = saved;
+      } else {
+        list.push(saved);
+      }
+      if (await saveWeaponSkills(weapon.id, list)) closeSkillEditor();
+    },
+    onCancel: closeSkillEditor,
+    onDelete: async (skillId) => {
+      const list = (getWeaponById(weapon.id).skills || []).filter(
+        (s) => s.id !== skillId
+      );
+      if (await saveWeaponSkills(weapon.id, list)) closeSkillEditor();
+    },
+  });
 }
 
 loadCharacter();

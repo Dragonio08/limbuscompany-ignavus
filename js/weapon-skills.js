@@ -1,0 +1,462 @@
+// Weapon skills ("cards"): point rules, card rendering, and the skill editor.
+// Loaded before character-sheet.js on the sheet page.
+
+const MAX_SKILLS_PER_WEAPON = 9;
+const MAX_WILL_COST = 3;
+const DAMAGE_TYPES = ["red", "white", "black", "pale"];
+const NEGATIVE_STATUSES = ["Burn", "Bleed", "Rupture", "Tremor"];
+const POSITIVE_STATUSES = ["Charge", "Poise"];
+
+// minPoints = the least you can spend on that attribute.
+// perUnit   = spent points needed for 1 "n" (n = floor(points / perUnit)).
+const ATTRIBUTE_RULES = {
+  deal: { label: "Deal damage", minPoints: 5, perUnit: 1 },
+  block: { label: "Block", minPoints: 6, perUnit: 1 },
+  inflict: {
+    label: "Inflict status",
+    minPoints: 5,
+    perUnit: 2,
+    statuses: NEGATIVE_STATUSES,
+  },
+  gain: {
+    label: "Gain status",
+    minPoints: 6,
+    perUnit: 2,
+    statuses: POSITIVE_STATUSES,
+  },
+  faint: { label: "Gain Faint Feeling", minPoints: 10, perUnit: 5 },
+};
+
+function capitalizeWord(text) {
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
+}
+
+// ---- Point rules ----
+
+// 10 points at Will cost 0, 20 at 1, 30 at 2, 40 at 3.
+function skillBasePoints(cost) {
+  return 10 + 10 * cost;
+}
+
+// Every tile the weapon fills in the inventory gives 2 extra points
+// for every Will the card costs.
+function skillTotalPoints(cost, weaponTiles) {
+  return skillBasePoints(cost) + 2 * weaponTiles * cost;
+}
+
+function attributeAmount(attr) {
+  return Math.floor(attr.points / ATTRIBUTE_RULES[attr.type].perUnit);
+}
+
+function skillDealsDamage(skill) {
+  return skill.attributes.some((attr) => attr.type === "deal");
+}
+
+// Red is free (every damaging card is Red by default). Pale costs half of
+// the card's total points, rounded down.
+function damageTypeCost(type, totalPoints) {
+  if (type === "white") return 6;
+  if (type === "black") return 10;
+  if (type === "pale") return Math.floor(totalPoints / 2);
+  return 0;
+}
+
+function skillPointsSpent(skill, totalPoints) {
+  const onAttributes = skill.attributes.reduce((sum, attr) => sum + attr.points, 0);
+  const onType = skillDealsDamage(skill)
+    ? damageTypeCost(skill.damageType, totalPoints)
+    : 0;
+  return onAttributes + onType;
+}
+
+function describeAttribute(attr, damageType) {
+  const n = attributeAmount(attr);
+  switch (attr.type) {
+    case "deal":
+      return `Deal ${n} ${capitalizeWord(damageType || "red")} damage`;
+    case "block":
+      return `Block ${n} damage`;
+    case "inflict":
+      return `Inflict ${n} ${attr.status}`;
+    case "gain":
+      return `Gain ${n} ${attr.status}`;
+    case "faint":
+      return `Gain ${n} Faint Feeling`;
+    default:
+      return "";
+  }
+}
+
+// Returns a list of problems (empty = valid) plus the point totals.
+function validateSkill(skill, weaponTiles) {
+  const errors = [];
+
+  if (!skill.name || !skill.name.trim()) {
+    errors.push("Give the skill a name.");
+  }
+
+  if (!Number.isInteger(skill.cost) || skill.cost < 0 || skill.cost > MAX_WILL_COST) {
+    errors.push(`Will cost must be between 0 and ${MAX_WILL_COST}.`);
+  }
+
+  if (!DAMAGE_TYPES.includes(skill.damageType)) {
+    errors.push("Pick a valid damage type.");
+  }
+
+  skill.attributes.forEach((attr) => {
+    const rule = ATTRIBUTE_RULES[attr.type];
+    if (!rule) {
+      errors.push("Unknown attribute.");
+      return;
+    }
+    if (!Number.isInteger(attr.points) || attr.points < rule.minPoints) {
+      errors.push(`${rule.label}: spend at least ${rule.minPoints} points.`);
+    }
+    if (rule.statuses && !rule.statuses.includes(attr.status)) {
+      errors.push(`${rule.label}: pick a status.`);
+    }
+  });
+
+  const total = skillTotalPoints(skill.cost, weaponTiles);
+  const spent = skillPointsSpent(skill, total);
+  if (spent > total) {
+    errors.push(`This skill uses ${spent} points but only has ${total}.`);
+  }
+
+  return { errors, total, spent };
+}
+
+// ---- Card rendering (Library of Ruina style) ----
+
+function buildRuinaCard(skill) {
+  const dealsDamage = skillDealsDamage(skill);
+  const typeKey = dealsDamage ? skill.damageType : "none";
+
+  const card = document.createElement("div");
+  card.className = `ruina-card ruina-card-${typeKey}`;
+
+  const cost = document.createElement("div");
+  cost.className = "ruina-card-cost";
+  cost.textContent = skill.cost;
+
+  const name = document.createElement("p");
+  name.className = "ruina-card-name display";
+  name.textContent = skill.name || "Unnamed Skill";
+
+  const art = document.createElement("div");
+  art.className = "ruina-card-art";
+  art.textContent = dealsDamage ? skill.damageType.toUpperCase() : "◇";
+
+  const effects = document.createElement("div");
+  effects.className = "ruina-card-effects";
+
+  if (skill.attributes.length === 0) {
+    const none = document.createElement("p");
+    none.textContent = "No effects.";
+    effects.appendChild(none);
+  } else {
+    skill.attributes.forEach((attr) => {
+      const line = document.createElement("p");
+      if (attr.type === "deal") line.className = "is-damage";
+      line.textContent = describeAttribute(attr, skill.damageType);
+      effects.appendChild(line);
+    });
+  }
+
+  card.appendChild(cost);
+  card.appendChild(name);
+  card.appendChild(art);
+  card.appendChild(effects);
+  return card;
+}
+
+// ---- Skill editor ----
+// Renders a form (with a live card preview) into `container`.
+// Calls onSave(skill), onCancel(), or onDelete(id) — the caller handles storage.
+
+function openSkillEditor({ container, skill, weaponTiles, onSave, onCancel, onDelete }) {
+  const isNew = !skill;
+  const draft = skill
+    ? JSON.parse(JSON.stringify(skill))
+    : {
+        id: crypto.randomUUID(),
+        name: "",
+        cost: 0,
+        damageType: "red",
+        attributes: [],
+      };
+
+  container.innerHTML = "";
+  container.style.display = "block";
+
+  const title = document.createElement("h3");
+  title.className = "skill-editor-title display";
+  title.textContent = isNew ? "New Skill" : "Edit Skill";
+
+  const body = document.createElement("div");
+  body.className = "skill-editor-body";
+
+  const form = document.createElement("div");
+  form.className = "skill-editor-form";
+
+  const previewWrap = document.createElement("div");
+  previewWrap.className = "skill-editor-preview";
+
+  // Name
+  const nameField = document.createElement("div");
+  nameField.className = "creator-field";
+  const nameLabel = document.createElement("label");
+  nameLabel.textContent = "Name";
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.maxLength = 40;
+  nameInput.value = draft.name;
+  nameInput.addEventListener("input", () => {
+    draft.name = nameInput.value;
+    refresh();
+  });
+  nameField.appendChild(nameLabel);
+  nameField.appendChild(nameInput);
+
+  // Will cost
+  const costField = document.createElement("div");
+  costField.className = "creator-field";
+  const costLabel = document.createElement("label");
+  costLabel.textContent = "Will Cost";
+  const costSelect = document.createElement("select");
+  for (let c = 0; c <= MAX_WILL_COST; c++) {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    costSelect.appendChild(opt);
+  }
+  costSelect.value = draft.cost;
+  costSelect.addEventListener("change", () => {
+    draft.cost = parseInt(costSelect.value, 10);
+    refresh();
+  });
+  costField.appendChild(costLabel);
+  costField.appendChild(costSelect);
+
+  // Points summary
+  const pointsEl = document.createElement("p");
+  pointsEl.className = "skill-points display";
+  const breakdownEl = document.createElement("p");
+  breakdownEl.className = "skill-points-breakdown";
+
+  // Damage type
+  const typeField = document.createElement("div");
+  typeField.className = "creator-field";
+  const typeLabel = document.createElement("label");
+  typeLabel.textContent = "Damage Type";
+  const typeSelect = document.createElement("select");
+  DAMAGE_TYPES.forEach((type) => {
+    const opt = document.createElement("option");
+    opt.value = type;
+    typeSelect.appendChild(opt);
+  });
+  typeSelect.addEventListener("change", () => {
+    draft.damageType = typeSelect.value;
+    refresh();
+  });
+  const typeNote = document.createElement("p");
+  typeNote.className = "skill-points-breakdown";
+  typeField.appendChild(typeLabel);
+  typeField.appendChild(typeSelect);
+  typeField.appendChild(typeNote);
+
+  // Attributes
+  const attrTitle = document.createElement("p");
+  attrTitle.className = "skill-attr-title display";
+  attrTitle.textContent = "Attributes";
+  const attrList = document.createElement("div");
+  attrList.className = "attr-list";
+
+  const addRow = document.createElement("div");
+  addRow.className = "skill-add-row";
+  const addSelect = document.createElement("select");
+  Object.entries(ATTRIBUTE_RULES).forEach(([key, rule]) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = `${rule.label} (min ${rule.minPoints} pts)`;
+    addSelect.appendChild(opt);
+  });
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "small-btn";
+  addBtn.textContent = "+ Add attribute";
+  addBtn.addEventListener("click", () => {
+    const rule = ATTRIBUTE_RULES[addSelect.value];
+    draft.attributes.push({
+      type: addSelect.value,
+      status: rule.statuses ? rule.statuses[0] : undefined,
+      points: rule.minPoints,
+    });
+    renderAttrRows();
+  });
+  addRow.appendChild(addSelect);
+  addRow.appendChild(addBtn);
+
+  const errorEl = document.createElement("p");
+  errorEl.className = "skill-editor-error";
+
+  const buttonRow = document.createElement("div");
+  buttonRow.className = "save-row";
+
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "small-btn";
+  saveBtn.textContent = "Save Skill";
+  saveBtn.addEventListener("click", () => {
+    draft.name = draft.name.trim();
+    const { errors } = validateSkill(draft, weaponTiles);
+    if (errors.length) {
+      errorEl.textContent = errors.join(" ");
+      return;
+    }
+    onSave(draft);
+  });
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "small-btn";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => onCancel());
+
+  buttonRow.appendChild(saveBtn);
+  buttonRow.appendChild(cancelBtn);
+
+  if (!isNew) {
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "small-btn";
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", () => {
+      if (window.confirm(`Delete the skill "${draft.name || "Unnamed Skill"}"?`)) {
+        onDelete(draft.id);
+      }
+    });
+    buttonRow.appendChild(deleteBtn);
+  }
+
+  form.appendChild(nameField);
+  form.appendChild(costField);
+  form.appendChild(pointsEl);
+  form.appendChild(breakdownEl);
+  form.appendChild(typeField);
+  form.appendChild(attrTitle);
+  form.appendChild(attrList);
+  form.appendChild(addRow);
+  form.appendChild(errorEl);
+  form.appendChild(buttonRow);
+
+  body.appendChild(form);
+  body.appendChild(previewWrap);
+  container.appendChild(title);
+  container.appendChild(body);
+
+  let attrRows = []; // { attr, resultEl } for live text updates
+
+  function renderAttrRows() {
+    attrList.innerHTML = "";
+    attrRows = [];
+
+    draft.attributes.forEach((attr, index) => {
+      const rule = ATTRIBUTE_RULES[attr.type];
+      const row = document.createElement("div");
+      row.className = "attr-row";
+
+      const label = document.createElement("span");
+      label.className = "attr-label";
+      label.textContent = rule.label;
+      row.appendChild(label);
+
+      if (rule.statuses) {
+        const statusSelect = document.createElement("select");
+        rule.statuses.forEach((status) => {
+          const opt = document.createElement("option");
+          opt.value = status;
+          opt.textContent = status;
+          statusSelect.appendChild(opt);
+        });
+        statusSelect.value = attr.status;
+        statusSelect.addEventListener("change", () => {
+          attr.status = statusSelect.value;
+          refresh();
+        });
+        row.appendChild(statusSelect);
+      }
+
+      const pointsInput = document.createElement("input");
+      pointsInput.type = "number";
+      pointsInput.min = rule.minPoints;
+      pointsInput.step = 1;
+      pointsInput.value = attr.points;
+      pointsInput.setAttribute("aria-label", `${rule.label} points`);
+      pointsInput.addEventListener("input", () => {
+        const parsed = parseInt(pointsInput.value, 10);
+        attr.points = Number.isNaN(parsed) ? 0 : parsed;
+        refresh();
+      });
+      row.appendChild(pointsInput);
+
+      const minNote = document.createElement("span");
+      minNote.className = "attr-min";
+      minNote.textContent = `pts (min ${rule.minPoints})`;
+      row.appendChild(minNote);
+
+      const resultEl = document.createElement("span");
+      resultEl.className = "attr-result";
+      row.appendChild(resultEl);
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "small-btn";
+      removeBtn.textContent = "✕";
+      removeBtn.setAttribute("aria-label", `Remove ${rule.label}`);
+      removeBtn.addEventListener("click", () => {
+        draft.attributes.splice(index, 1);
+        renderAttrRows();
+      });
+      row.appendChild(removeBtn);
+
+      attrList.appendChild(row);
+      attrRows.push({ attr, resultEl });
+    });
+
+    refresh();
+  }
+
+  // Recomputes everything that depends on the draft, without rebuilding
+  // the input rows (so typing never loses focus).
+  function refresh() {
+    const total = skillTotalPoints(draft.cost, weaponTiles);
+    const spent = skillPointsSpent(draft, total);
+    const dealsDamage = skillDealsDamage(draft);
+
+    pointsEl.textContent = `Points: ${spent} / ${total}`;
+    pointsEl.classList.toggle("is-over", spent > total);
+    breakdownEl.textContent =
+      `Base ${skillBasePoints(draft.cost)} + weapon bonus ` +
+      `${2 * weaponTiles * draft.cost} (${weaponTiles} tiles × 2 × ${draft.cost} Will)`;
+
+    Array.from(typeSelect.options).forEach((opt) => {
+      const cost = damageTypeCost(opt.value, total);
+      opt.textContent = `${capitalizeWord(opt.value)} (${cost === 0 ? "free" : cost + " pts"})`;
+    });
+    typeSelect.value = draft.damageType;
+    typeSelect.disabled = !dealsDamage;
+    typeNote.textContent = dealsDamage
+      ? ""
+      : "Add a Deal attribute to give this skill a damage type.";
+
+    attrRows.forEach(({ attr, resultEl }) => {
+      resultEl.textContent = "→ " + describeAttribute(attr, draft.damageType);
+    });
+
+    previewWrap.innerHTML = "";
+    previewWrap.appendChild(buildRuinaCard(draft));
+  }
+
+  renderAttrRows();
+}
