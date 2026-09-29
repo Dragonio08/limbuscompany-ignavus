@@ -1011,8 +1011,11 @@ function renderSkillGrid() {
     return;
   }
 
-  skills.forEach((skill) => {
-    const card = buildRuinaCard(skill);
+  skills.forEach((rawSkill) => {
+    const skill = normalizeSkill(rawSkill);
+    const card = buildRuinaCard(skill, {
+      onArtClick: canEdit ? () => changeSkillImage(skill.id) : null,
+    });
     if (canEdit) {
       card.classList.add("is-clickable");
       card.tabIndex = 0;
@@ -1050,6 +1053,20 @@ async function saveWeaponSkills(weaponId, skills) {
   statusEl.textContent = "Saved.";
   renderSkillGrid();
   return true;
+}
+
+// Clicking a card's picture area: choose an image and save it right away.
+async function changeSkillImage(skillId) {
+  const weapon = getWeaponById(currentWeaponId);
+  if (!weapon || !(isOwner || isDm)) return;
+
+  const image = await pickCardImage();
+  if (!image) return;
+
+  const list = (getWeaponById(weapon.id).skills || []).map((s) =>
+    s.id === skillId ? { ...normalizeSkill(s), image } : s
+  );
+  await saveWeaponSkills(weapon.id, list);
 }
 
 function openWeaponSkillEditor(skill) {

@@ -205,7 +205,11 @@ renderAllSkills();
 
 // ---- Shape picker grids ----
 
-function buildShapeGrid(gridEl, selectedSet) {
+const MAX_WEAPON_TILES = 3;
+
+// options.maxCells: refuse to select more cells than this.
+// options.onChange: called after every change to the selection.
+function buildShapeGrid(gridEl, selectedSet, options = {}) {
   for (let r = 0; r < 6; r++) {
     for (let c = 0; c < 6; c++) {
       const cell = document.createElement("button");
@@ -218,9 +222,14 @@ function buildShapeGrid(gridEl, selectedSet) {
           selectedSet.delete(key);
           cell.classList.remove("selected");
         } else {
+          if (options.maxCells && selectedSet.size >= options.maxCells) {
+            if (options.onChange) options.onChange(true);
+            return;
+          }
           selectedSet.add(key);
           cell.classList.add("selected");
         }
+        if (options.onChange) options.onChange(false);
       });
       gridEl.appendChild(cell);
     }
@@ -231,7 +240,20 @@ const containerSelected = new Set();
 const weaponSelected = new Set();
 
 buildShapeGrid(document.getElementById("container-shape"), containerSelected);
-buildShapeGrid(document.getElementById("weapon-shape"), weaponSelected);
+function updateWeaponTileCount(hitLimit) {
+  const el = document.getElementById("weapon-tile-count");
+  el.textContent =
+    `Tiles: ${weaponSelected.size} / ${MAX_WEAPON_TILES}` +
+    (hitLimit
+      ? ` — a starting weapon can be at most ${MAX_WEAPON_TILES} tiles.`
+      : "");
+}
+
+buildShapeGrid(document.getElementById("weapon-shape"), weaponSelected, {
+  maxCells: MAX_WEAPON_TILES,
+  onChange: updateWeaponTileCount,
+});
+updateWeaponTileCount(false);
 
 // ---- Shape helpers ----
 
@@ -331,6 +353,11 @@ form.addEventListener("submit", async (event) => {
 
   if (containerCells.length === 0 || weaponCells.length === 0) {
     errorEl.textContent = "Choose a shape for both your Container and your Weapon.";
+    return;
+  }
+
+  if (weaponCells.length > MAX_WEAPON_TILES) {
+    errorEl.textContent = `Your starting weapon can be at most ${MAX_WEAPON_TILES} tiles.`;
     return;
   }
 

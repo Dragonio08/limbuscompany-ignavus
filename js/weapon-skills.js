@@ -7,24 +7,26 @@ const DAMAGE_TYPES = ["red", "white", "black", "pale"];
 const NEGATIVE_STATUSES = ["Burn", "Bleed", "Rupture", "Tremor"];
 const POSITIVE_STATUSES = ["Charge", "Poise"];
 
-// minPoints = the least you can spend on that attribute.
-// perUnit   = spent points needed for 1 "n" (n = floor(points / perUnit)).
+// addCost = points it costs just to put the attribute on a card.
+//           A freshly added attribute does 0 until you spend more on it.
+// perUnit = extra points spent on the attribute for 1 "n"
+//           (n = floor(extra points / perUnit)).
 const ATTRIBUTE_RULES = {
-  deal: { label: "Deal damage", minPoints: 5, perUnit: 1 },
-  block: { label: "Block", minPoints: 6, perUnit: 1 },
+  deal: { label: "Deal damage", addCost: 5, perUnit: 1 },
+  block: { label: "Block", addCost: 6, perUnit: 1 },
   inflict: {
     label: "Inflict status",
-    minPoints: 5,
+    addCost: 5,
     perUnit: 2,
     statuses: NEGATIVE_STATUSES,
   },
   gain: {
     label: "Gain status",
-    minPoints: 6,
+    addCost: 6,
     perUnit: 2,
     statuses: POSITIVE_STATUSES,
   },
-  faint: { label: "Gain Faint Feeling", minPoints: 10, perUnit: 5 },
+  faint: { label: "Gain Faint Feeling", addCost: 10, perUnit: 5 },
 };
 
 function capitalizeWord(text) {
@@ -38,10 +40,10 @@ function skillBasePoints(cost) {
   return 10 + 10 * cost;
 }
 
-// Every tile the weapon fills in the inventory gives 2 extra points
+// Every tile the weapon fills in the inventory gives 1 extra point
 // for every Will the card costs.
 function skillTotalPoints(cost, weaponTiles) {
-  return skillBasePoints(cost) + 2 * weaponTiles * cost;
+  return skillBasePoints(cost) + weaponTiles * cost;
 }
 
 function attributeAmount(attr) {
@@ -62,7 +64,10 @@ function damageTypeCost(type, totalPoints) {
 }
 
 function skillPointsSpent(skill, totalPoints) {
-  const onAttributes = skill.attributes.reduce((sum, attr) => sum + attr.points, 0);
+  const onAttributes = skill.attributes.reduce(
+    (sum, attr) => sum + ATTRIBUTE_RULES[attr.type].addCost + attr.points,
+    0
+  );
   const onType = skillDealsDamage(skill)
     ? damageTypeCost(skill.damageType, totalPoints)
     : 0;
@@ -109,8 +114,8 @@ function validateSkill(skill, weaponTiles) {
       errors.push("Unknown attribute.");
       return;
     }
-    if (!Number.isInteger(attr.points) || attr.points < rule.minPoints) {
-      errors.push(`${rule.label}: spend at least ${rule.minPoints} points.`);
+    if (!Number.isInteger(attr.points) || attr.points < 0) {
+      errors.push(`${rule.label}: extra points can't be negative.`);
     }
     if (rule.statuses && !rule.statuses.includes(attr.status)) {
       errors.push(`${rule.label}: pick a status.`);
@@ -126,9 +131,113 @@ function validateSkill(skill, weaponTiles) {
   return { errors, total, spent };
 }
 
+// Skills saved by the first version counted the add cost inside `points`.
+// Convert them so the total points spent stays the same.
+function normalizeSkill(skill) {
+  if (skill.rules === 2) return skill;
+  return {
+    ...skill,
+    rules: 2,
+    attributes: (skill.attributes || []).map((attr) => {
+      const rule = ATTRIBUTE_RULES[attr.type];
+      return { ...attr, points: Math.max(0, attr.points - (rule ? rule.addCost : 0)) };
+    }),
+  };
+}
+
+// Card images are stored as small JPEG data URLs; only accept that shape.
+function isSafeCardImage(value) {
+  return (
+    typeof value === "string" &&
+    /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value)
+  );
+}
+
+function buildImageIcon() {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("class", "ruina-card-art-icon");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "1.5");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("aria-hidden", "true");
+
+  const frame = document.createElementNS(ns, "rect");
+  frame.setAttribute("x", "3");
+  frame.setAttribute("y", "4");
+  frame.setAttribute("width", "18");
+  frame.setAttribute("height", "16");
+  frame.setAttribute("rx", "1");
+
+  const sun = document.createElementNS(ns, "circle");
+  sun.setAttribute("cx", "9");
+  sun.setAttribute("cy", "10");
+  sun.setAttribute("r", "1.6");
+
+  const hills = document.createElementNS(ns, "path");
+  hills.setAttribute("d", "M3 17l5-5 4 4 3-3 6 6");
+
+  svg.appendChild(frame);
+  svg.appendChild(sun);
+  svg.appendChild(hills);
+  return svg;
+}
+
+// Opens the file picker, shrinks the chosen image to a small JPEG and
+// resolves with its data URL (or null if nothing usable was chosen).
+function pickCardImage() {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      if (!file || !file.type.startsWith("image/")) {
+        resolve(null);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onerror = () => resolve(null);
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => resolve(null);
+        img.onload = () => {
+          const width = 280;
+          const height = 154;
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#0e0c0b";
+          ctx.fillRect(0, 0, width, height);
+
+          // "cover" crop: fill the frame, cutting off the overflow.
+          const scale = Math.max(width / img.width, height / img.height);
+          const drawW = img.width * scale;
+          const drawH = img.height * scale;
+          ctx.drawImage(img, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
+
+          resolve(canvas.toDataURL("image/jpeg", 0.75));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    input.click();
+  });
+}
+
 // ---- Card rendering (Library of Ruina style) ----
 
-function buildRuinaCard(skill) {
+// options.onArtClick (optional): makes the picture area clickable so a
+// custom image can be uploaded.
+function buildRuinaCard(skill, options = {}) {
   const dealsDamage = skillDealsDamage(skill);
   const typeKey = dealsDamage ? skill.damageType : "none";
 
@@ -145,7 +254,32 @@ function buildRuinaCard(skill) {
 
   const art = document.createElement("div");
   art.className = "ruina-card-art";
-  art.textContent = dealsDamage ? skill.damageType.toUpperCase() : "◇";
+
+  if (isSafeCardImage(skill.image)) {
+    art.classList.add("has-image");
+    art.style.backgroundImage = `url("${skill.image}")`;
+  } else {
+    art.appendChild(buildImageIcon());
+  }
+
+  if (options.onArtClick) {
+    art.classList.add("is-uploadable");
+    art.title = "Click to upload an image";
+    art.tabIndex = 0;
+    art.setAttribute("role", "button");
+    art.setAttribute("aria-label", "Upload an image for this skill");
+    art.addEventListener("click", (event) => {
+      event.stopPropagation();
+      options.onArtClick();
+    });
+    art.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        event.stopPropagation();
+        options.onArtClick();
+      }
+    });
+  }
 
   const effects = document.createElement("div");
   effects.className = "ruina-card-effects";
@@ -177,9 +311,10 @@ function buildRuinaCard(skill) {
 function openSkillEditor({ container, skill, weaponTiles, onSave, onCancel, onDelete }) {
   const isNew = !skill;
   const draft = skill
-    ? JSON.parse(JSON.stringify(skill))
+    ? JSON.parse(JSON.stringify(normalizeSkill(skill)))
     : {
         id: crypto.randomUUID(),
+        rules: 2,
         name: "",
         cost: 0,
         damageType: "red",
@@ -201,6 +336,21 @@ function openSkillEditor({ container, skill, weaponTiles, onSave, onCancel, onDe
 
   const previewWrap = document.createElement("div");
   previewWrap.className = "skill-editor-preview";
+  const previewHolder = document.createElement("div");
+  const previewHint = document.createElement("p");
+  previewHint.className = "skill-editor-hint";
+  previewHint.textContent = "Click the picture area to upload an image.";
+  const removeImageBtn = document.createElement("button");
+  removeImageBtn.type = "button";
+  removeImageBtn.className = "small-btn";
+  removeImageBtn.textContent = "Remove image";
+  removeImageBtn.addEventListener("click", () => {
+    delete draft.image;
+    refresh();
+  });
+  previewWrap.appendChild(previewHolder);
+  previewWrap.appendChild(previewHint);
+  previewWrap.appendChild(removeImageBtn);
 
   // Name
   const nameField = document.createElement("div");
@@ -278,7 +428,7 @@ function openSkillEditor({ container, skill, weaponTiles, onSave, onCancel, onDe
   Object.entries(ATTRIBUTE_RULES).forEach(([key, rule]) => {
     const opt = document.createElement("option");
     opt.value = key;
-    opt.textContent = `${rule.label} (min ${rule.minPoints} pts)`;
+    opt.textContent = `${rule.label} (costs ${rule.addCost} pts)`;
     addSelect.appendChild(opt);
   });
   const addBtn = document.createElement("button");
@@ -290,7 +440,7 @@ function openSkillEditor({ container, skill, weaponTiles, onSave, onCancel, onDe
     draft.attributes.push({
       type: addSelect.value,
       status: rule.statuses ? rule.statuses[0] : undefined,
-      points: rule.minPoints,
+      points: 0,
     });
     renderAttrRows();
   });
@@ -389,7 +539,7 @@ function openSkillEditor({ container, skill, weaponTiles, onSave, onCancel, onDe
 
       const pointsInput = document.createElement("input");
       pointsInput.type = "number";
-      pointsInput.min = rule.minPoints;
+      pointsInput.min = 0;
       pointsInput.step = 1;
       pointsInput.value = attr.points;
       pointsInput.setAttribute("aria-label", `${rule.label} points`);
@@ -402,7 +552,7 @@ function openSkillEditor({ container, skill, weaponTiles, onSave, onCancel, onDe
 
       const minNote = document.createElement("span");
       minNote.className = "attr-min";
-      minNote.textContent = `pts (min ${rule.minPoints})`;
+      minNote.textContent = `extra pts (adding costs ${rule.addCost})`;
       row.appendChild(minNote);
 
       const resultEl = document.createElement("span");
@@ -438,7 +588,7 @@ function openSkillEditor({ container, skill, weaponTiles, onSave, onCancel, onDe
     pointsEl.classList.toggle("is-over", spent > total);
     breakdownEl.textContent =
       `Base ${skillBasePoints(draft.cost)} + weapon bonus ` +
-      `${2 * weaponTiles * draft.cost} (${weaponTiles} tiles × 2 × ${draft.cost} Will)`;
+      `${weaponTiles * draft.cost} (${weaponTiles} tiles × ${draft.cost} Will)`;
 
     Array.from(typeSelect.options).forEach((opt) => {
       const cost = damageTypeCost(opt.value, total);
@@ -454,8 +604,19 @@ function openSkillEditor({ container, skill, weaponTiles, onSave, onCancel, onDe
       resultEl.textContent = "→ " + describeAttribute(attr, draft.damageType);
     });
 
-    previewWrap.innerHTML = "";
-    previewWrap.appendChild(buildRuinaCard(draft));
+    previewHolder.innerHTML = "";
+    previewHolder.appendChild(
+      buildRuinaCard(draft, {
+        onArtClick: async () => {
+          const image = await pickCardImage();
+          if (image) {
+            draft.image = image;
+            refresh();
+          }
+        },
+      })
+    );
+    removeImageBtn.style.display = draft.image ? "inline-block" : "none";
   }
 
   renderAttrRows();
