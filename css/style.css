@@ -1542,3 +1542,37 @@ body::before {
   margin: 0.5rem 0;
   font-size: 0.9rem;
 }
+
+/* ---------- Card picture (empty icon / uploaded image) ---------- */
+
+.ruina-card-art.has-image {
+  background-size: cover;
+  background-position: center;
+}
+
+.ruina-card-art-icon {
+  width: 34px;
+  height: 34px;
+  opacity: 0.55;
+}
+
+.ruina-card-art.is-uploadable {
+  cursor: pointer;
+}
+
+.ruina-card-art.is-uploadable:hover,
+.ruina-card-art.is-uploadable:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: -2px;
+}
+
+.ruina-card-art.is-uploadable:hover .ruina-card-art-icon {
+  opacity: 1;
+}
+
+.skill-editor-hint {
+  color: var(--ink-dim);
+  font-style: italic;
+  font-size: 0.8rem;
+  margin: 0.6rem 0;
+}
