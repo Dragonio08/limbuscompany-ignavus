@@ -602,8 +602,11 @@ function wireTabs() {
 }
 
 // ---- E.G.O ----
-// Each character starts with 1 slot (ego_slots). Only a DM can add more.
-// egos is a compact array of { id, name, description }; slot i shows egos[i].
+// Each character starts with 1 slot (ego_slots). Only a DM can add/remove
+// slots. Slot 0 is always the character's own Zayin, built by the owner at
+// a fixed 50-point budget. Every other slot can only be filled by the DM,
+// freely, with any of the higher E.G.O types (Teth, He, Waw, Aleph).
+// egos is a compact array of E.G.O objects; slot i shows egos[i].
 
 let editingEgoIndex = null;
 
@@ -665,7 +668,7 @@ async function saveEgos(newEgos, statusEl) {
     .eq("id", character.id);
 
   if (error) {
-    statusEl.textContent = "Couldn't save: " + error.message;
+    if (statusEl) statusEl.textContent = "Couldn't save: " + error.message;
     return false;
   }
 
@@ -685,32 +688,59 @@ function renderEgo() {
 
   for (let i = 0; i < slots; i++) {
     const ego = egos[i];
+    const isZayinSlot = i === 0;
     const card = document.createElement("div");
     card.className = "ego-slot";
 
     const slotLabel = document.createElement("p");
     slotLabel.className = "ego-slot-label";
-    slotLabel.textContent = `Slot ${i + 1}`;
+    slotLabel.textContent = isZayinSlot ? "Slot 1 — Zayin" : `Slot ${i + 1}`;
     card.appendChild(slotLabel);
 
     const status = document.createElement("span");
     status.className = "save-status";
 
-    if (editingEgoIndex === i && canEdit) {
-      card.appendChild(buildEgoForm(i, ego, status));
+    // Who may create/edit an E.G.O for this slot:
+    //  - slot 0 (Zayin): only the owner builds it themselves.
+    //  - other slots: only the DM builds/edits them.
+    const canFillThisSlot = isZayinSlot ? isOwner : isDm;
+    // Once an E.G.O exists, owner and DM can both edit/remove it.
+    const canManageExisting = canEdit;
+
+    if (editingEgoIndex === i && (ego ? canManageExisting : canFillThisSlot)) {
+      const editorHost = document.createElement("div");
+      card.appendChild(editorHost);
+      const openEditor = isZayinSlot ? openZayinEgoEditor : openDmEgoEditor;
+      openEditor({
+        container: editorHost,
+        ego,
+        onSave: async (saved) => {
+          const list = [...egos];
+          list[i] = saved;
+          if (await saveEgos(list, status)) {
+            editingEgoIndex = null;
+            renderEgo();
+          }
+        },
+        onCancel: () => {
+          editingEgoIndex = null;
+          renderEgo();
+        },
+        onDelete: async () => {
+          const list = [...egos];
+          list[i] = undefined;
+          // Trim trailing empty slots so the array doesn't grow forever.
+          while (list.length && list[list.length - 1] === undefined) list.pop();
+          if (await saveEgos(list, status)) {
+            editingEgoIndex = null;
+            renderEgo();
+          }
+        },
+      });
     } else if (ego) {
-      const name = document.createElement("p");
-      name.className = "ego-name display";
-      name.textContent = ego.name;
+      card.appendChild(buildEgoCard(ego));
 
-      const desc = document.createElement("p");
-      desc.className = "ego-description";
-      desc.textContent = ego.description || "No description.";
-
-      card.appendChild(name);
-      card.appendChild(desc);
-
-      if (canEdit) {
+      if (canManageExisting) {
         const row = document.createElement("div");
         row.className = "save-row";
 
@@ -732,8 +762,10 @@ function renderEgo() {
             `Remove the E.G.O "${ego.name}"? This frees up the slot.`
           );
           if (!confirmed) return;
-          const newEgos = egos.filter((_, idx) => idx !== i);
-          if (await saveEgos(newEgos, status)) renderEgo();
+          const list = [...egos];
+          list[i] = undefined;
+          while (list.length && list[list.length - 1] === undefined) list.pop();
+          if (await saveEgos(list, status)) renderEgo();
         });
 
         row.appendChild(editBtn);
@@ -744,14 +776,20 @@ function renderEgo() {
     } else {
       const empty = document.createElement("p");
       empty.className = "ego-empty";
-      empty.textContent = "Empty slot";
+      if (canFillThisSlot) {
+        empty.textContent = "Empty slot";
+      } else if (isZayinSlot) {
+        empty.textContent = "Waiting for the player to build their starting Zayin E.G.O.";
+      } else {
+        empty.textContent = "Waiting for the Dungeon Master to grant an E.G.O here.";
+      }
       card.appendChild(empty);
 
-      if (canEdit) {
+      if (canFillThisSlot) {
         const addBtn = document.createElement("button");
         addBtn.type = "button";
         addBtn.className = "small-btn";
-        addBtn.textContent = "Add E.G.O +";
+        addBtn.textContent = isZayinSlot ? "Create Your Zayin E.G.O +" : "Create E.G.O +";
         addBtn.addEventListener("click", () => {
           editingEgoIndex = i;
           renderEgo();
@@ -764,77 +802,6 @@ function renderEgo() {
   }
 }
 
-function buildEgoForm(index, ego, status) {
-  const form = document.createElement("div");
-  form.className = "ego-form";
-
-  const nameLabel = document.createElement("label");
-  nameLabel.textContent = "Name";
-  const nameInput = document.createElement("input");
-  nameInput.type = "text";
-  nameInput.maxLength = 60;
-  nameInput.className = "item-name-input";
-  nameInput.value = ego ? ego.name : "";
-
-  const descLabel = document.createElement("label");
-  descLabel.textContent = "Description";
-  const descInput = document.createElement("textarea");
-  descInput.className = "sheet-textarea item-description-textarea";
-  descInput.value = ego ? ego.description || "" : "";
-
-  const row = document.createElement("div");
-  row.className = "save-row";
-
-  const saveBtn = document.createElement("button");
-  saveBtn.type = "button";
-  saveBtn.className = "small-btn";
-  saveBtn.textContent = "Save E.G.O";
-  saveBtn.addEventListener("click", async () => {
-    const name = nameInput.value.trim();
-    if (!name) {
-      status.textContent = "Give your E.G.O a name.";
-      return;
-    }
-
-    const egos = [...getEgos()];
-    const entry = {
-      id: ego ? ego.id : crypto.randomUUID(),
-      name,
-      description: descInput.value,
-    };
-
-    if (index < egos.length) {
-      egos[index] = entry;
-    } else {
-      egos.push(entry);
-    }
-
-    if (await saveEgos(egos, status)) {
-      editingEgoIndex = null;
-      renderEgo();
-    }
-  });
-
-  const cancelBtn = document.createElement("button");
-  cancelBtn.type = "button";
-  cancelBtn.className = "small-btn";
-  cancelBtn.textContent = "Cancel";
-  cancelBtn.addEventListener("click", () => {
-    editingEgoIndex = null;
-    renderEgo();
-  });
-
-  row.appendChild(saveBtn);
-  row.appendChild(cancelBtn);
-  row.appendChild(status);
-
-  form.appendChild(nameLabel);
-  form.appendChild(nameInput);
-  form.appendChild(descLabel);
-  form.appendChild(descInput);
-  form.appendChild(row);
-  return form;
-}
 
 
 // ---- Vitals: HP, SP, Speed ----

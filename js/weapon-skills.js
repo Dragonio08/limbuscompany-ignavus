@@ -47,6 +47,7 @@ function skillTotalPoints(cost, weaponTiles) {
 }
 
 function attributeAmount(attr) {
+  if (attr.direct) return attr.amount || 0;
   return Math.floor(attr.points / ATTRIBUTE_RULES[attr.type].perUnit);
 }
 
@@ -607,6 +608,611 @@ function openSkillEditor({ container, skill, weaponTiles, onSave, onCancel, onDe
     previewHolder.innerHTML = "";
     previewHolder.appendChild(
       buildRuinaCard(draft, {
+        onArtClick: async () => {
+          const image = await pickCardImage();
+          if (image) {
+            draft.image = image;
+            refresh();
+          }
+        },
+      })
+    );
+    removeImageBtn.style.display = draft.image ? "inline-block" : "none";
+  }
+
+  renderAttrRows();
+}
+
+// ---- E.G.O ----
+// Zayin is the starting E.G.O every character builds themselves, with the
+// same point-buy attribute system as weapon skills (fixed 50-point budget,
+// fixed 3 Faint Feeling cost). Teth, He, Waw and Aleph are made freely by
+// the Dungeon Master — any attributes, any amounts, any Faint Feeling cost.
+
+const EGO_TYPES = ["zayin", "teth", "he", "waw", "aleph"];
+const DM_EGO_TYPES = ["teth", "he", "waw", "aleph"];
+const EGO_TYPE_LABELS = {
+  zayin: "Zayin",
+  teth: "Teth",
+  he: "He",
+  waw: "Waw",
+  aleph: "Aleph",
+};
+const ZAYIN_BUDGET = 50;
+const ZAYIN_FAINT_COST = 3;
+
+function addEgoTypeBadge(card, egoType) {
+  const badge = document.createElement("div");
+  badge.className = `ego-type-badge ego-type-${egoType || "zayin"}`;
+  badge.textContent = EGO_TYPE_LABELS[egoType] || egoType;
+  card.appendChild(badge);
+}
+
+// Renders an E.G.O using the same card look as a weapon skill: the
+// hexagon shows Faint Feeling cost instead of Will cost, plus a type badge.
+function buildEgoCard(ego, options = {}) {
+  const card = buildRuinaCard(
+    {
+      name: ego.name,
+      cost: ego.faintCost,
+      damageType: ego.damageType,
+      attributes: ego.attributes,
+      image: ego.image,
+    },
+    options
+  );
+  addEgoTypeBadge(card, ego.egoType);
+  return card;
+}
+
+function validateEgoName(ego) {
+  return ego.name && ego.name.trim() ? [] : ["Give the E.G.O a name."];
+}
+
+// ---- Zayin editor (player, fixed 50-point budget) ----
+
+function openZayinEgoEditor({ container, ego, onSave, onCancel, onDelete }) {
+  const isNew = !ego;
+  const draft = ego
+    ? JSON.parse(JSON.stringify(ego))
+    : {
+        id: crypto.randomUUID(),
+        egoType: "zayin",
+        name: "",
+        faintCost: ZAYIN_FAINT_COST,
+        damageType: "red",
+        attributes: [],
+      };
+  draft.egoType = "zayin";
+  draft.faintCost = ZAYIN_FAINT_COST;
+
+  container.innerHTML = "";
+  container.style.display = "block";
+
+  const title = document.createElement("h3");
+  title.className = "skill-editor-title display";
+  title.textContent = isNew ? "Create Your Zayin E.G.O" : "Edit Zayin E.G.O";
+
+  const body = document.createElement("div");
+  body.className = "skill-editor-body";
+  const form = document.createElement("div");
+  form.className = "skill-editor-form";
+  const previewWrap = document.createElement("div");
+  previewWrap.className = "skill-editor-preview";
+  const previewHolder = document.createElement("div");
+  const removeImageBtn = document.createElement("button");
+  removeImageBtn.type = "button";
+  removeImageBtn.className = "small-btn";
+  removeImageBtn.textContent = "Remove image";
+  removeImageBtn.addEventListener("click", () => {
+    delete draft.image;
+    refresh();
+  });
+  previewWrap.appendChild(previewHolder);
+  previewWrap.appendChild(removeImageBtn);
+
+  const meta = document.createElement("p");
+  meta.className = "skill-points-breakdown";
+  meta.textContent = `Type: Zayin · Faint Feeling cost: ${ZAYIN_FAINT_COST} (fixed)`;
+
+  const nameField = document.createElement("div");
+  nameField.className = "creator-field";
+  const nameLabel = document.createElement("label");
+  nameLabel.textContent = "Name";
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.maxLength = 40;
+  nameInput.value = draft.name;
+  nameInput.addEventListener("input", () => {
+    draft.name = nameInput.value;
+    refresh();
+  });
+  nameField.appendChild(nameLabel);
+  nameField.appendChild(nameInput);
+
+  const pointsEl = document.createElement("p");
+  pointsEl.className = "skill-points display";
+
+  const typeField = document.createElement("div");
+  typeField.className = "creator-field";
+  const typeLabel = document.createElement("label");
+  typeLabel.textContent = "Damage Type";
+  const typeSelect = document.createElement("select");
+  DAMAGE_TYPES.forEach((type) => {
+    const opt = document.createElement("option");
+    opt.value = type;
+    typeSelect.appendChild(opt);
+  });
+  typeSelect.addEventListener("change", () => {
+    draft.damageType = typeSelect.value;
+    refresh();
+  });
+  const typeNote = document.createElement("p");
+  typeNote.className = "skill-points-breakdown";
+  typeField.appendChild(typeLabel);
+  typeField.appendChild(typeSelect);
+  typeField.appendChild(typeNote);
+
+  const attrTitle = document.createElement("p");
+  attrTitle.className = "skill-attr-title display";
+  attrTitle.textContent = "Attributes";
+  const attrList = document.createElement("div");
+  attrList.className = "attr-list";
+
+  const addRow = document.createElement("div");
+  addRow.className = "skill-add-row";
+  const addSelect = document.createElement("select");
+  Object.entries(ATTRIBUTE_RULES).forEach(([key, rule]) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = `${rule.label} (costs ${rule.addCost} pts)`;
+    addSelect.appendChild(opt);
+  });
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "small-btn";
+  addBtn.textContent = "+ Add attribute";
+  addBtn.addEventListener("click", () => {
+    const rule = ATTRIBUTE_RULES[addSelect.value];
+    draft.attributes.push({
+      type: addSelect.value,
+      status: rule.statuses ? rule.statuses[0] : undefined,
+      points: 0,
+    });
+    renderAttrRows();
+  });
+  addRow.appendChild(addSelect);
+  addRow.appendChild(addBtn);
+
+  const errorEl = document.createElement("p");
+  errorEl.className = "skill-editor-error";
+
+  const buttonRow = document.createElement("div");
+  buttonRow.className = "save-row";
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "small-btn";
+  saveBtn.textContent = "Save E.G.O";
+  saveBtn.addEventListener("click", () => {
+    draft.name = draft.name.trim();
+    const errors = validateEgoName(draft);
+    const spent = skillPointsSpent(draft, ZAYIN_BUDGET);
+    if (spent > ZAYIN_BUDGET) {
+      errors.push(`This E.G.O uses ${spent} points but only has ${ZAYIN_BUDGET}.`);
+    }
+    if (errors.length) {
+      errorEl.textContent = errors.join(" ");
+      return;
+    }
+    onSave(draft);
+  });
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "small-btn";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => onCancel());
+  buttonRow.appendChild(saveBtn);
+  buttonRow.appendChild(cancelBtn);
+  if (!isNew) {
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "small-btn";
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", () => {
+      if (window.confirm(`Delete the E.G.O "${draft.name || "Unnamed"}"?`)) {
+        onDelete(draft.id);
+      }
+    });
+    buttonRow.appendChild(deleteBtn);
+  }
+
+  form.appendChild(meta);
+  form.appendChild(nameField);
+  form.appendChild(pointsEl);
+  form.appendChild(typeField);
+  form.appendChild(attrTitle);
+  form.appendChild(attrList);
+  form.appendChild(addRow);
+  form.appendChild(errorEl);
+  form.appendChild(buttonRow);
+  body.appendChild(form);
+  body.appendChild(previewWrap);
+  container.appendChild(title);
+  container.appendChild(body);
+
+  let attrRows = [];
+
+  function renderAttrRows() {
+    attrList.innerHTML = "";
+    attrRows = [];
+    draft.attributes.forEach((attr, index) => {
+      const rule = ATTRIBUTE_RULES[attr.type];
+      const row = document.createElement("div");
+      row.className = "attr-row";
+      const label = document.createElement("span");
+      label.className = "attr-label";
+      label.textContent = rule.label;
+      row.appendChild(label);
+      if (rule.statuses) {
+        const statusSelect = document.createElement("select");
+        rule.statuses.forEach((status) => {
+          const opt = document.createElement("option");
+          opt.value = status;
+          opt.textContent = status;
+          statusSelect.appendChild(opt);
+        });
+        statusSelect.value = attr.status;
+        statusSelect.addEventListener("change", () => {
+          attr.status = statusSelect.value;
+          refresh();
+        });
+        row.appendChild(statusSelect);
+      }
+      const pointsInput = document.createElement("input");
+      pointsInput.type = "number";
+      pointsInput.min = 0;
+      pointsInput.step = 1;
+      pointsInput.value = attr.points;
+      pointsInput.setAttribute("aria-label", `${rule.label} extra points`);
+      pointsInput.addEventListener("input", () => {
+        const parsed = parseInt(pointsInput.value, 10);
+        attr.points = Number.isNaN(parsed) ? 0 : parsed;
+        refresh();
+      });
+      row.appendChild(pointsInput);
+      const minNote = document.createElement("span");
+      minNote.className = "attr-min";
+      minNote.textContent = `extra pts (adding costs ${rule.addCost})`;
+      row.appendChild(minNote);
+      const resultEl = document.createElement("span");
+      resultEl.className = "attr-result";
+      row.appendChild(resultEl);
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "small-btn";
+      removeBtn.textContent = "✕";
+      removeBtn.addEventListener("click", () => {
+        draft.attributes.splice(index, 1);
+        renderAttrRows();
+      });
+      row.appendChild(removeBtn);
+      attrList.appendChild(row);
+      attrRows.push({ attr, resultEl });
+    });
+    refresh();
+  }
+
+  function refresh() {
+    const spent = skillPointsSpent(draft, ZAYIN_BUDGET);
+    const dealsDamage = skillDealsDamage(draft);
+
+    pointsEl.textContent = `Points: ${spent} / ${ZAYIN_BUDGET}`;
+    pointsEl.classList.toggle("is-over", spent > ZAYIN_BUDGET);
+
+    Array.from(typeSelect.options).forEach((opt) => {
+      const cost = damageTypeCost(opt.value, ZAYIN_BUDGET);
+      opt.textContent = `${capitalizeWord(opt.value)} (${cost === 0 ? "free" : cost + " pts"})`;
+    });
+    typeSelect.value = draft.damageType;
+    typeSelect.disabled = !dealsDamage;
+    typeNote.textContent = dealsDamage
+      ? ""
+      : "Add a Deal attribute to give this E.G.O a damage type.";
+
+    attrRows.forEach(({ attr, resultEl }) => {
+      resultEl.textContent = "→ " + describeAttribute(attr, draft.damageType);
+    });
+
+    previewHolder.innerHTML = "";
+    previewHolder.appendChild(
+      buildEgoCard(draft, {
+        onArtClick: async () => {
+          const image = await pickCardImage();
+          if (image) {
+            draft.image = image;
+            refresh();
+          }
+        },
+      })
+    );
+    removeImageBtn.style.display = draft.image ? "inline-block" : "none";
+  }
+
+  renderAttrRows();
+}
+
+// ---- DM editor (Teth / He / Waw / Aleph, fully free-form) ----
+
+function openDmEgoEditor({ container, ego, onSave, onCancel, onDelete }) {
+  const isNew = !ego;
+  const draft = ego
+    ? JSON.parse(JSON.stringify(ego))
+    : {
+        id: crypto.randomUUID(),
+        egoType: "teth",
+        name: "",
+        faintCost: 0,
+        damageType: "red",
+        attributes: [],
+      };
+  if (!DM_EGO_TYPES.includes(draft.egoType)) draft.egoType = "teth";
+
+  container.innerHTML = "";
+  container.style.display = "block";
+
+  const title = document.createElement("h3");
+  title.className = "skill-editor-title display";
+  title.textContent = isNew ? "Create E.G.O (Dungeon Master)" : "Edit E.G.O";
+
+  const body = document.createElement("div");
+  body.className = "skill-editor-body";
+  const form = document.createElement("div");
+  form.className = "skill-editor-form";
+  const previewWrap = document.createElement("div");
+  previewWrap.className = "skill-editor-preview";
+  const previewHolder = document.createElement("div");
+  const removeImageBtn = document.createElement("button");
+  removeImageBtn.type = "button";
+  removeImageBtn.className = "small-btn";
+  removeImageBtn.textContent = "Remove image";
+  removeImageBtn.addEventListener("click", () => {
+    delete draft.image;
+    refresh();
+  });
+  previewWrap.appendChild(previewHolder);
+  previewWrap.appendChild(removeImageBtn);
+
+  const note = document.createElement("p");
+  note.className = "skill-points-breakdown";
+  note.textContent = "As the Dungeon Master, add any attributes at any amount, freely.";
+
+  const nameField = document.createElement("div");
+  nameField.className = "creator-field";
+  const nameLabel = document.createElement("label");
+  nameLabel.textContent = "Name";
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.maxLength = 40;
+  nameInput.value = draft.name;
+  nameInput.addEventListener("input", () => {
+    draft.name = nameInput.value;
+    refresh();
+  });
+  nameField.appendChild(nameLabel);
+  nameField.appendChild(nameInput);
+
+  const typeAndCostField = document.createElement("div");
+  typeAndCostField.className = "creator-field";
+  const typeAndCostRow = document.createElement("div");
+  typeAndCostRow.className = "skill-add-row";
+
+  const egoTypeSelect = document.createElement("select");
+  DM_EGO_TYPES.forEach((type) => {
+    const opt = document.createElement("option");
+    opt.value = type;
+    opt.textContent = EGO_TYPE_LABELS[type];
+    egoTypeSelect.appendChild(opt);
+  });
+  egoTypeSelect.value = draft.egoType;
+  egoTypeSelect.addEventListener("change", () => {
+    draft.egoType = egoTypeSelect.value;
+    refresh();
+  });
+
+  const faintLabel = document.createElement("span");
+  faintLabel.className = "attr-label";
+  faintLabel.textContent = "Faint Feeling cost";
+  const faintInput = document.createElement("input");
+  faintInput.type = "number";
+  faintInput.min = 0;
+  faintInput.step = 1;
+  faintInput.value = draft.faintCost;
+  faintInput.addEventListener("input", () => {
+    const parsed = parseInt(faintInput.value, 10);
+    draft.faintCost = Number.isNaN(parsed) ? 0 : parsed;
+    refresh();
+  });
+
+  typeAndCostRow.appendChild(egoTypeSelect);
+  typeAndCostRow.appendChild(faintLabel);
+  typeAndCostRow.appendChild(faintInput);
+  typeAndCostField.appendChild(typeAndCostRow);
+
+  const typeField = document.createElement("div");
+  typeField.className = "creator-field";
+  const damageLabel = document.createElement("label");
+  damageLabel.textContent = "Damage Type";
+  const typeSelect = document.createElement("select");
+  DAMAGE_TYPES.forEach((type) => {
+    const opt = document.createElement("option");
+    opt.value = type;
+    opt.textContent = capitalizeWord(type);
+    typeSelect.appendChild(opt);
+  });
+  typeSelect.addEventListener("change", () => {
+    draft.damageType = typeSelect.value;
+    refresh();
+  });
+  const typeNote = document.createElement("p");
+  typeNote.className = "skill-points-breakdown";
+  typeField.appendChild(damageLabel);
+  typeField.appendChild(typeSelect);
+  typeField.appendChild(typeNote);
+
+  const attrTitle = document.createElement("p");
+  attrTitle.className = "skill-attr-title display";
+  attrTitle.textContent = "Attributes";
+  const attrList = document.createElement("div");
+  attrList.className = "attr-list";
+
+  const addRow = document.createElement("div");
+  addRow.className = "skill-add-row";
+  const addSelect = document.createElement("select");
+  Object.entries(ATTRIBUTE_RULES).forEach(([key, rule]) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = rule.label;
+    addSelect.appendChild(opt);
+  });
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "small-btn";
+  addBtn.textContent = "+ Add attribute";
+  addBtn.addEventListener("click", () => {
+    const rule = ATTRIBUTE_RULES[addSelect.value];
+    draft.attributes.push({
+      type: addSelect.value,
+      status: rule.statuses ? rule.statuses[0] : undefined,
+      direct: true,
+      amount: 0,
+    });
+    renderAttrRows();
+  });
+  addRow.appendChild(addSelect);
+  addRow.appendChild(addBtn);
+
+  const errorEl = document.createElement("p");
+  errorEl.className = "skill-editor-error";
+
+  const buttonRow = document.createElement("div");
+  buttonRow.className = "save-row";
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "small-btn";
+  saveBtn.textContent = "Save E.G.O";
+  saveBtn.addEventListener("click", () => {
+    draft.name = draft.name.trim();
+    const errors = validateEgoName(draft);
+    if (errors.length) {
+      errorEl.textContent = errors.join(" ");
+      return;
+    }
+    onSave(draft);
+  });
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "small-btn";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => onCancel());
+  buttonRow.appendChild(saveBtn);
+  buttonRow.appendChild(cancelBtn);
+  if (!isNew) {
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "small-btn";
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", () => {
+      if (window.confirm(`Delete the E.G.O "${draft.name || "Unnamed"}"?`)) {
+        onDelete(draft.id);
+      }
+    });
+    buttonRow.appendChild(deleteBtn);
+  }
+
+  form.appendChild(note);
+  form.appendChild(nameField);
+  form.appendChild(typeAndCostField);
+  form.appendChild(typeField);
+  form.appendChild(attrTitle);
+  form.appendChild(attrList);
+  form.appendChild(addRow);
+  form.appendChild(errorEl);
+  form.appendChild(buttonRow);
+  body.appendChild(form);
+  body.appendChild(previewWrap);
+  container.appendChild(title);
+  container.appendChild(body);
+
+  let attrRows = [];
+
+  function renderAttrRows() {
+    attrList.innerHTML = "";
+    attrRows = [];
+    draft.attributes.forEach((attr, index) => {
+      const rule = ATTRIBUTE_RULES[attr.type];
+      const row = document.createElement("div");
+      row.className = "attr-row";
+      const label = document.createElement("span");
+      label.className = "attr-label";
+      label.textContent = rule.label;
+      row.appendChild(label);
+      if (rule.statuses) {
+        const statusSelect = document.createElement("select");
+        rule.statuses.forEach((status) => {
+          const opt = document.createElement("option");
+          opt.value = status;
+          opt.textContent = status;
+          statusSelect.appendChild(opt);
+        });
+        statusSelect.value = attr.status;
+        statusSelect.addEventListener("change", () => {
+          attr.status = statusSelect.value;
+          refresh();
+        });
+        row.appendChild(statusSelect);
+      }
+      const amountInput = document.createElement("input");
+      amountInput.type = "number";
+      amountInput.min = 0;
+      amountInput.step = 1;
+      amountInput.value = attr.amount || 0;
+      amountInput.setAttribute("aria-label", `${rule.label} amount`);
+      amountInput.addEventListener("input", () => {
+        const parsed = parseInt(amountInput.value, 10);
+        attr.amount = Number.isNaN(parsed) ? 0 : parsed;
+        refresh();
+      });
+      row.appendChild(amountInput);
+      const minNote = document.createElement("span");
+      minNote.className = "attr-min";
+      minNote.textContent = "amount (n)";
+      row.appendChild(minNote);
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "small-btn";
+      removeBtn.textContent = "✕";
+      removeBtn.addEventListener("click", () => {
+        draft.attributes.splice(index, 1);
+        renderAttrRows();
+      });
+      row.appendChild(removeBtn);
+      attrList.appendChild(row);
+      attrRows.push(row);
+    });
+    refresh();
+  }
+
+  function refresh() {
+    const dealsDamage = skillDealsDamage(draft);
+    typeSelect.value = draft.damageType;
+    typeSelect.disabled = !dealsDamage;
+    typeNote.textContent = dealsDamage
+      ? ""
+      : "Add a Deal attribute to give this E.G.O a damage type.";
+
+    previewHolder.innerHTML = "";
+    previewHolder.appendChild(
+      buildEgoCard(draft, {
         onArtClick: async () => {
           const image = await pickCardImage();
           if (image) {
