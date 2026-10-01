@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Confirmation — Limbus Company: Ignavus</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="site-nav">
+    <a class="site-nav-brand display" href="index.html"><span class="accent-yellow">Limbus Company</span>: <span class="accent">Ignavus</span></a>
+    <div id="nav-account" class="site-nav-account"></div>
+  </header>
+
+  <section class="page">
+    <h1 id="confirm-title" class="page-title display">Checking…</h1>
+    <p id="confirm-message" class="page-note">One moment.</p>
+    <div class="save-row" style="justify-content: center; margin-top: 1rem;">
+      <a id="confirm-link" class="small-btn" href="index.html" style="display: none;">Go to Main Page</a>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/email-confirmed.js"></script>
+</body>
+</html>
