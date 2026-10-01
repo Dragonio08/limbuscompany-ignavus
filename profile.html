@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Profile — Limbus Company: Ignavus</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="site-nav">
+    <a class="site-nav-brand display" href="index.html"><span class="accent-yellow">Limbus Company</span>: <span class="accent">Ignavus</span></a>
+    <div id="nav-account" class="site-nav-account"></div>
+  </header>
+
+  <div class="profile-page">
+    <h1 class="creator-title display">Your Profile</h1>
+    <p id="profile-email" class="profile-email"></p>
+
+    <button id="profile-avatar-btn" class="profile-avatar-btn" type="button" aria-label="Upload a profile picture">👤</button>
+    <div class="save-row" style="justify-content: center;">
+      <button id="profile-avatar-remove" class="small-btn" type="button">Remove Photo</button>
+    </div>
+
+    <div class="creator-field" style="text-align: left; margin-top: 1.6rem;">
+      <label for="profile-username-input">Username</label>
+      <input id="profile-username-input" type="text" maxlength="30" placeholder="Choose a username">
+    </div>
+
+    <div class="save-row" style="justify-content: center;">
+      <button id="profile-save" class="small-btn" type="button">Save Profile</button>
+      <span id="profile-status" class="save-status"></span>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/profile.js"></script>
+</body>
+</html>
