@@ -926,6 +926,25 @@ body::before {
   min-height: 90px;
 }
 
+.item-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.6rem 0 0.8rem;
+}
+
+.item-name-row label {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+}
+
+.item-name-row input {
+  flex: 1;
+  min-width: 140px;
+}
+
 /* ---------- Sheet layout ---------- */
 
 .sheet-section {
@@ -1501,6 +1520,7 @@ body::before {
   font-family: 'Bebas Neue', sans-serif;
   letter-spacing: 0.03em;
   min-width: 7.5rem;
+  cursor: help;
 }
 
 .attr-row input,
@@ -1581,7 +1601,7 @@ body::before {
 
 .ego-type-badge {
   position: absolute;
-  top: -10px;
+  top: -20px;
   right: -8px;
   padding: 0.2rem 0.6rem;
   font-family: 'Bebas Neue', sans-serif;
@@ -1592,11 +1612,122 @@ body::before {
   z-index: 2;
 }
 
-.ego-type-zayin { background: #a8a29a; }
-.ego-type-teth { background: #6fae6f; }
-.ego-type-he { background: #6f93c9; }
+.ego-type-zayin { background: #5fae5f; }
+.ego-type-teth { background: #6f93c9; }
+.ego-type-he { background: #d9b23c; }
 .ego-type-waw { background: #b07fd6; }
 .ego-type-aleph {
-  background: linear-gradient(120deg, var(--yellow), var(--crimson-bright));
+  background: #c23b3b;
   color: #fff;
+}
+
+/* He (yellow) E.G.O cards get a warmer frame than a normal card */
+.ego-card-he {
+  background: linear-gradient(180deg, #2a2210 0%, #0e0c0b 100%);
+  box-shadow: inset 0 0 0 3px #0a0908, inset 0 0 0 4px #d9b23c, 0 0 14px rgba(217, 178, 60, 0.25);
+}
+
+/* ---------- Container contents ---------- */
+
+.container-contents-section {
+  border-top: 1px solid var(--line);
+  margin-top: 1.2rem;
+  padding-top: 1.1rem;
+}
+
+.container-contents-title {
+  font-size: 1.2rem;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.8rem;
+}
+
+.container-contents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.container-content-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--line);
+  color: #fff;
+}
+
+.container-content-chip.is-draggable {
+  cursor: grab;
+}
+
+.drag-target-container {
+  box-shadow: inset 0 0 0 2px var(--gold);
+  background: rgba(156, 127, 77, 0.35);
+}
+
+/* ---------- Navbar avatar ---------- */
+
+.nav-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background-color: var(--bg-panel);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1rem;
+  color: var(--ink-dim);
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: border-color 0.2s ease;
+}
+
+.nav-avatar:hover,
+.nav-avatar:focus-visible {
+  border-color: var(--gold);
+}
+
+/* ---------- Profile page ---------- */
+
+.profile-page {
+  min-height: 100vh;
+  padding: calc(60px + 2rem) 1.6rem 3rem;
+  max-width: 480px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.profile-avatar-btn {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background-color: var(--bg-panel);
+  background-size: cover;
+  background-position: center;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.profile-avatar-btn:hover,
+.profile-avatar-btn:focus-visible {
+  border-color: var(--gold);
+}
+
+.profile-email {
+  color: var(--ink-dim);
+  font-style: italic;
+  margin-bottom: 1.6rem;
 }
