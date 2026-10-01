@@ -9,24 +9,51 @@ const POSITIVE_STATUSES = ["Charge", "Poise"];
 
 // addCost = points it costs just to put the attribute on a card.
 //           A freshly added attribute does 0 until you spend more on it.
-// perUnit = extra points spent on the attribute for 1 "n"
-//           (n = floor(extra points / perUnit)).
+// perUnit = extra points spent on the attribute for 1 "n", up to softCap
+//           points spent; beyond that, perUnitAfterCap points for 1 "n".
+// tooltip = explanation shown when hovering the attribute's name.
 const ATTRIBUTE_RULES = {
-  deal: { label: "Deal damage", addCost: 5, perUnit: 1 },
-  block: { label: "Block", addCost: 6, perUnit: 1 },
+  deal: {
+    label: "Deal damage",
+    addCost: 5,
+    perUnit: 1,
+    softCap: 15,
+    perUnitAfterCap: 2,
+    tooltip:
+      "1 point = 1 damage, up to 15 points spent. Past 15, every 2 extra points only adds 1 more damage.",
+  },
+  block: {
+    label: "Block",
+    addCost: 6,
+    perUnit: 1,
+    tooltip: "1 point = 1 Block.",
+  },
   inflict: {
     label: "Inflict status",
     addCost: 5,
     perUnit: 2,
+    softCap: 13,
+    perUnitAfterCap: 3,
     statuses: NEGATIVE_STATUSES,
+    tooltip:
+      "Every 2 points = 1 stack, up to 13 points spent. Past 13, every 3 extra points only adds 1 more stack.",
   },
   gain: {
     label: "Gain status",
     addCost: 6,
     perUnit: 2,
+    softCap: 13,
+    perUnitAfterCap: 3,
     statuses: POSITIVE_STATUSES,
+    tooltip:
+      "Every 2 points = 1 stack, up to 13 points spent. Past 13, every 3 extra points only adds 1 more stack.",
   },
-  faint: { label: "Gain Faint Feeling", addCost: 10, perUnit: 5 },
+  faint: {
+    label: "Gain Faint Feeling",
+    addCost: 10,
+    perUnit: 5,
+    tooltip: "Every 5 points = 1 Faint Feeling.",
+  },
 };
 
 function capitalizeWord(text) {
@@ -48,7 +75,17 @@ function skillTotalPoints(cost, weaponTiles) {
 
 function attributeAmount(attr) {
   if (attr.direct) return attr.amount || 0;
-  return Math.floor(attr.points / ATTRIBUTE_RULES[attr.type].perUnit);
+
+  const rule = ATTRIBUTE_RULES[attr.type];
+  const points = attr.points || 0;
+
+  if (!rule.softCap || points <= rule.softCap) {
+    return Math.floor(points / rule.perUnit);
+  }
+
+  const atCap = Math.floor(rule.softCap / rule.perUnit);
+  const beyond = Math.floor((points - rule.softCap) / rule.perUnitAfterCap);
+  return atCap + beyond;
 }
 
 function skillDealsDamage(skill) {
@@ -59,7 +96,7 @@ function skillDealsDamage(skill) {
 // the card's total points, rounded down.
 function damageTypeCost(type, totalPoints) {
   if (type === "white") return 6;
-  if (type === "black") return 10;
+  if (type === "black") return 13;
   if (type === "pale") return Math.floor(totalPoints / 2);
   return 0;
 }
@@ -520,6 +557,7 @@ function openSkillEditor({ container, skill, weaponTiles, onSave, onCancel, onDe
       const label = document.createElement("span");
       label.className = "attr-label";
       label.textContent = rule.label;
+      if (rule.tooltip) label.title = rule.tooltip;
       row.appendChild(label);
 
       if (rule.statuses) {
@@ -550,11 +588,6 @@ function openSkillEditor({ container, skill, weaponTiles, onSave, onCancel, onDe
         refresh();
       });
       row.appendChild(pointsInput);
-
-      const minNote = document.createElement("span");
-      minNote.className = "attr-min";
-      minNote.textContent = `extra pts (adding costs ${rule.addCost})`;
-      row.appendChild(minNote);
 
       const resultEl = document.createElement("span");
       resultEl.className = "attr-result";
@@ -662,6 +695,7 @@ function buildEgoCard(ego, options = {}) {
     options
   );
   addEgoTypeBadge(card, ego.egoType);
+  card.classList.add(`ego-card-${ego.egoType || "zayin"}`);
   return card;
 }
 
@@ -852,6 +886,7 @@ function openZayinEgoEditor({ container, ego, onSave, onCancel, onDelete }) {
       const label = document.createElement("span");
       label.className = "attr-label";
       label.textContent = rule.label;
+      if (rule.tooltip) label.title = rule.tooltip;
       row.appendChild(label);
       if (rule.statuses) {
         const statusSelect = document.createElement("select");
@@ -880,10 +915,6 @@ function openZayinEgoEditor({ container, ego, onSave, onCancel, onDelete }) {
         refresh();
       });
       row.appendChild(pointsInput);
-      const minNote = document.createElement("span");
-      minNote.className = "attr-min";
-      minNote.textContent = `extra pts (adding costs ${rule.addCost})`;
-      row.appendChild(minNote);
       const resultEl = document.createElement("span");
       resultEl.className = "attr-result";
       row.appendChild(resultEl);
@@ -1155,6 +1186,7 @@ function openDmEgoEditor({ container, ego, onSave, onCancel, onDelete }) {
       const label = document.createElement("span");
       label.className = "attr-label";
       label.textContent = rule.label;
+      if (rule.tooltip) label.title = rule.tooltip;
       row.appendChild(label);
       if (rule.statuses) {
         const statusSelect = document.createElement("select");

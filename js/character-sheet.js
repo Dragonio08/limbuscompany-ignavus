@@ -287,15 +287,7 @@ function renderInventory() {
   grid.innerHTML = "";
 
   const canEdit = isOwner || isDm;
-  const cellMap = new Map(); // "r,c" -> item
-
-  (character.inventory || []).forEach((item) => {
-    item.cells.forEach(([dr, dc]) => {
-      const r = item.origin.row + dr;
-      const c = item.origin.col + dc;
-      cellMap.set(`${r},${c}`, item);
-    });
-  });
+  const cellMap = buildInventoryCellMap();
 
   for (let r = 0; r < 6; r++) {
     for (let c = 0; c < 6; c++) {
@@ -327,25 +319,32 @@ function renderInventory() {
   }
 }
 
-function startItemDrag(event, item, grabRow, grabCol) {
-  event.preventDefault();
+function buildInventoryCellMap() {
+  const cellMap = new Map(); // "r,c" -> item
+  (character.inventory || []).forEach((item) => {
+    item.cells.forEach(([dr, dc]) => {
+      const r = item.origin.row + dr;
+      const c = item.origin.col + dc;
+      cellMap.set(`${r},${c}`, item);
+    });
+  });
+  return cellMap;
+}
 
-  const grid = document.getElementById("inventory-grid");
-  const rect = grid.getBoundingClientRect();
-  const cellSize = rect.width / 6;
-  const grabOffset = [grabRow - item.origin.row, grabCol - item.origin.col];
-
-  const maxDr = Math.max(...item.cells.map(([dr]) => dr));
-  const maxDc = Math.max(...item.cells.map(([, dc]) => dc));
+// Builds a floating shape made of cells that follows the pointer, anchored
+// so that grabOffset (the shape cell you grabbed) stays under the cursor.
+function createItemGhost(cellsShape, itemType, cellSize, grabOffset) {
+  const maxDr = Math.max(...cellsShape.map(([dr]) => dr));
+  const maxDc = Math.max(...cellsShape.map(([, dc]) => dc));
 
   const ghost = document.createElement("div");
   ghost.className = "inventory-drag-ghost";
   ghost.style.width = `${(maxDc + 1) * cellSize}px`;
   ghost.style.height = `${(maxDr + 1) * cellSize}px`;
 
-  item.cells.forEach(([dr, dc]) => {
+  cellsShape.forEach(([dr, dc]) => {
     const sq = document.createElement("div");
-    sq.className = `inventory-ghost-cell inventory-item-${item.type}`;
+    sq.className = `inventory-ghost-cell inventory-item-${itemType}`;
     sq.style.left = `${dc * cellSize}px`;
     sq.style.top = `${dr * cellSize}px`;
     sq.style.width = `${cellSize}px`;
@@ -359,18 +358,36 @@ function startItemDrag(event, item, grabRow, grabCol) {
     ghost.style.left = `${clientX - (grabOffset[1] * cellSize + cellSize / 2)}px`;
     ghost.style.top = `${clientY - (grabOffset[0] * cellSize + cellSize / 2)}px`;
   }
+
+  return { ghost, positionGhost };
+}
+
+function clearDragHighlights(grid) {
+  grid
+    .querySelectorAll(".drag-target-valid, .drag-target-invalid, .drag-target-container")
+    .forEach((el) =>
+      el.classList.remove("drag-target-valid", "drag-target-invalid", "drag-target-container")
+    );
+}
+
+// Dragging an item already on the grid: normal reposition, or drop it onto
+// a different container's cells to store it inside that container.
+function startItemDrag(event, item, grabRow, grabCol) {
+  event.preventDefault();
+
+  const grid = document.getElementById("inventory-grid");
+  const rect = grid.getBoundingClientRect();
+  const cellSize = rect.width / 6;
+  const grabOffset = [grabRow - item.origin.row, grabCol - item.origin.col];
+  const cellMap = buildInventoryCellMap();
+
+  const { ghost, positionGhost } = createItemGhost(item.cells, item.type, cellSize, grabOffset);
   positionGhost(event.clientX, event.clientY);
 
   const startX = event.clientX;
   const startY = event.clientY;
   let moved = false;
   let lastResult = null;
-
-  function clearHighlights() {
-    grid
-      .querySelectorAll(".drag-target-valid, .drag-target-invalid")
-      .forEach((el) => el.classList.remove("drag-target-valid", "drag-target-invalid"));
-  }
 
   function onPointerMove(moveEvent) {
     const dx = moveEvent.clientX - startX;
@@ -382,6 +399,22 @@ function startItemDrag(event, item, grabRow, grabCol) {
     const gridRect = grid.getBoundingClientRect();
     const pointerRow = Math.floor((moveEvent.clientY - gridRect.top) / cellSize);
     const pointerCol = Math.floor((moveEvent.clientX - gridRect.left) / cellSize);
+
+    clearDragHighlights(grid);
+
+    // Hovering directly over a different container: offer to store inside it.
+    const hoverItem = cellMap.get(`${pointerRow},${pointerCol}`);
+    if (hoverItem && hoverItem.type === "container" && hoverItem.id !== item.id) {
+      hoverItem.cells.forEach(([dr, dc]) => {
+        const r = hoverItem.origin.row + dr;
+        const c = hoverItem.origin.col + dc;
+        const targetCell = grid.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        if (targetCell) targetCell.classList.add("drag-target-container");
+      });
+      lastResult = { containerTarget: hoverItem };
+      return;
+    }
+
     const originRow = pointerRow - grabOffset[0];
     const originCol = pointerCol - grabOffset[1];
 
@@ -398,7 +431,6 @@ function startItemDrag(event, item, grabRow, grabCol) {
     const overlaps = translated.some(([r, c]) => occupiedByOthers.has(`${r},${c}`));
     const valid = inBounds && !overlaps;
 
-    clearHighlights();
     if (inBounds) {
       translated.forEach(([r, c]) => {
         const targetCell = grid.querySelector(`[data-row="${r}"][data-col="${c}"]`);
@@ -415,20 +447,170 @@ function startItemDrag(event, item, grabRow, grabCol) {
     document.removeEventListener("pointermove", onPointerMove);
     document.removeEventListener("pointerup", onPointerUp);
     ghost.remove();
-    clearHighlights();
+    clearDragHighlights(grid);
 
     if (!moved) {
       showItemDetail(item);
       return;
     }
 
-    if (lastResult && lastResult.valid) {
+    if (lastResult && lastResult.containerTarget) {
+      storeItemInContainer(item.id, lastResult.containerTarget.id);
+    } else if (lastResult && lastResult.valid) {
       finalizeMove(item.id, lastResult.originRow, lastResult.originCol);
     }
   }
 
   document.addEventListener("pointermove", onPointerMove);
   document.addEventListener("pointerup", onPointerUp);
+}
+
+// Dragging an item out of a container's contents list onto the main grid.
+function startContainerContentDrag(event, containedItem, containerId) {
+  event.preventDefault();
+
+  const grid = document.getElementById("inventory-grid");
+  const rect = grid.getBoundingClientRect();
+  const cellSize = rect.width / 6;
+  const grabOffset = [0, 0];
+
+  const { ghost, positionGhost } = createItemGhost(
+    containedItem.cells,
+    containedItem.type,
+    cellSize,
+    grabOffset
+  );
+  positionGhost(event.clientX, event.clientY);
+
+  let lastResult = null;
+
+  function onPointerMove(moveEvent) {
+    positionGhost(moveEvent.clientX, moveEvent.clientY);
+
+    const gridRect = grid.getBoundingClientRect();
+    const pointerRow = Math.floor((moveEvent.clientY - gridRect.top) / cellSize);
+    const pointerCol = Math.floor((moveEvent.clientX - gridRect.left) / cellSize);
+
+    const translated = containedItem.cells.map(([dr, dc]) => [pointerRow + dr, pointerCol + dc]);
+    const inBounds = translated.every(([r, c]) => r >= 0 && r < 6 && c >= 0 && c < 6);
+
+    const occupied = new Set();
+    character.inventory.forEach((otherItem) => {
+      otherItem.cells.forEach(([dr, dc]) => {
+        occupied.add(`${otherItem.origin.row + dr},${otherItem.origin.col + dc}`);
+      });
+    });
+    const overlaps = translated.some(([r, c]) => occupied.has(`${r},${c}`));
+    const valid = inBounds && !overlaps;
+
+    clearDragHighlights(grid);
+    if (inBounds) {
+      translated.forEach(([r, c]) => {
+        const targetCell = grid.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+        if (targetCell) {
+          targetCell.classList.add(valid ? "drag-target-valid" : "drag-target-invalid");
+        }
+      });
+    }
+
+    lastResult = { valid, originRow: pointerRow, originCol: pointerCol };
+  }
+
+  function onPointerUp() {
+    document.removeEventListener("pointermove", onPointerMove);
+    document.removeEventListener("pointerup", onPointerUp);
+    ghost.remove();
+    clearDragHighlights(grid);
+
+    if (lastResult && lastResult.valid) {
+      takeItemOutOfContainer(
+        containerId,
+        containedItem.id,
+        lastResult.originRow,
+        lastResult.originCol
+      );
+    }
+  }
+
+  document.addEventListener("pointermove", onPointerMove);
+  document.addEventListener("pointerup", onPointerUp);
+}
+
+// Moves an item from the main grid into a container's contents (1 slot per
+// tile the container occupies).
+async function storeItemInContainer(itemId, containerId) {
+  const statusEl = document.getElementById("inventory-status");
+  const item = character.inventory.find((i) => i.id === itemId);
+  const container = character.inventory.find((i) => i.id === containerId);
+  if (!item || !container) return;
+
+  const capacity = container.cells.length;
+  const contents = container.contents || [];
+  if (contents.length >= capacity) {
+    statusEl.textContent = `"${container.name}" is full (${capacity}/${capacity} slots).`;
+    return;
+  }
+
+  const { origin, ...storedItem } = item; // drop origin, it no longer sits on the grid
+  const updatedInventory = character.inventory
+    .filter((i) => i.id !== itemId)
+    .map((i) => (i.id === containerId ? { ...i, contents: [...contents, storedItem] } : i));
+
+  const { error } = await client
+    .from("characters")
+    .update({ inventory: updatedInventory })
+    .eq("id", character.id);
+
+  if (error) {
+    statusEl.textContent = "Couldn't save: " + error.message;
+    return;
+  }
+
+  character.inventory = updatedInventory;
+  statusEl.textContent = `Stored "${item.name}" in "${container.name}".`;
+  renderInventory();
+
+  const panel = document.getElementById("item-detail-panel");
+  if (panel.style.display !== "none" && panel.dataset.itemId === containerId) {
+    showItemDetail(character.inventory.find((i) => i.id === containerId));
+  } else if (panel.dataset.itemId === itemId) {
+    panel.style.display = "none";
+  }
+}
+
+// Moves an item out of a container's contents back onto the main grid.
+async function takeItemOutOfContainer(containerId, contentItemId, newRow, newCol) {
+  const statusEl = document.getElementById("inventory-status");
+  const container = character.inventory.find((i) => i.id === containerId);
+  if (!container) return;
+
+  const contents = container.contents || [];
+  const contentItem = contents.find((i) => i.id === contentItemId);
+  if (!contentItem) return;
+
+  const restoredItem = { ...contentItem, origin: { row: newRow, col: newCol } };
+  const updatedInventory = character.inventory
+    .map((i) =>
+      i.id === containerId
+        ? { ...i, contents: contents.filter((ci) => ci.id !== contentItemId) }
+        : i
+    )
+    .concat(restoredItem);
+
+  const { error } = await client
+    .from("characters")
+    .update({ inventory: updatedInventory })
+    .eq("id", character.id);
+
+  if (error) {
+    statusEl.textContent = "Couldn't save: " + error.message;
+    return;
+  }
+
+  character.inventory = updatedInventory;
+  statusEl.textContent = `Took "${contentItem.name}" out of "${container.name}".`;
+  renderInventory();
+  showItemDetail(character.inventory.find((i) => i.id === containerId));
 }
 
 async function finalizeMove(itemId, newRow, newCol) {
@@ -460,10 +642,55 @@ async function finalizeMove(itemId, newRow, newCol) {
 function showItemDetail(item) {
   const panel = document.getElementById("item-detail-panel");
   panel.style.display = "block";
+  panel.dataset.itemId = item.id;
   document.getElementById("item-detail-name").textContent = item.name;
   document.getElementById("item-detail-type").textContent =
     item.type === "container" ? "Container" : "Weapon";
 
+  const canEditItem = isOwner || isDm;
+
+  // ---- Name (owner or DM can rename either a Weapon or a Container) ----
+  const nameInput = document.getElementById("item-name-input");
+  const nameStatus = document.getElementById("item-name-status");
+  nameStatus.textContent = "";
+  nameInput.value = item.name;
+  nameInput.disabled = !canEditItem;
+
+  const nameSaveBtn = document.getElementById("item-name-save");
+  nameSaveBtn.style.display = canEditItem ? "inline-block" : "none";
+  const newNameSaveBtn = nameSaveBtn.cloneNode(true); // clear old listeners
+  nameSaveBtn.parentNode.replaceChild(newNameSaveBtn, nameSaveBtn);
+
+  newNameSaveBtn.addEventListener("click", async () => {
+    if (!canEditItem) return;
+    const newName = nameInput.value.trim();
+    if (!newName) {
+      nameStatus.textContent = "Name can't be empty.";
+      return;
+    }
+
+    const updatedInventory = character.inventory.map((invItem) =>
+      invItem.id === item.id ? { ...invItem, name: newName } : invItem
+    );
+
+    const { error } = await client
+      .from("characters")
+      .update({ inventory: updatedInventory })
+      .eq("id", character.id);
+
+    if (error) {
+      nameStatus.textContent = "Couldn't save: " + error.message;
+      return;
+    }
+
+    character.inventory = updatedInventory;
+    item.name = newName;
+    document.getElementById("item-detail-name").textContent = newName;
+    nameStatus.textContent = "Saved.";
+    renderInventory();
+  });
+
+  // ---- Money (everyone can view a Container's money, only a DM edits it) ----
   const moneyRow = document.getElementById("item-money-row");
   const moneyStatus = document.getElementById("item-money-status");
   moneyStatus.textContent = "";
@@ -472,13 +699,15 @@ function showItemDetail(item) {
     moneyRow.style.display = "flex";
     const moneyInput = document.getElementById("item-money-input");
     moneyInput.value = item.money || 0;
+    moneyInput.disabled = !isDm;
 
     const saveBtn = document.getElementById("item-money-save");
+    saveBtn.style.display = isDm ? "inline-block" : "none";
     const newSaveBtn = saveBtn.cloneNode(true); // clear old listeners
     saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
 
     newSaveBtn.addEventListener("click", async () => {
-      if (!isOwner && !isDm) return;
+      if (!isDm) return;
       let amount = parseInt(moneyInput.value, 10);
       if (Number.isNaN(amount) || amount < 0) amount = 0;
 
@@ -536,7 +765,99 @@ function showItemDetail(item) {
     descStatus.textContent = "Saved.";
   });
 
+  renderContainerContents(item);
   renderWeaponSkills(item);
+}
+
+// ---- Container contents (items stored inside a Container) ----
+
+function renderContainerContents(item) {
+  const section = document.getElementById("container-contents-section");
+
+  if (item.type !== "container") {
+    section.style.display = "none";
+    return;
+  }
+
+  section.style.display = "block";
+  const capacity = item.cells.length;
+  const contents = item.contents || [];
+  const canEdit = isOwner || isDm;
+
+  document.getElementById("container-contents-count").textContent =
+    `${contents.length}/${capacity}`;
+
+  const list = document.getElementById("container-contents-list");
+  list.innerHTML = "";
+
+  if (contents.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "ego-empty";
+    empty.textContent = "Empty.";
+    list.appendChild(empty);
+    return;
+  }
+
+  contents.forEach((contentItem) => {
+    const chip = document.createElement("div");
+    chip.className = `container-content-chip inventory-item-${contentItem.type}`;
+
+    const label = document.createElement("span");
+    label.textContent = `${contentItem.name} (${contentItem.type})`;
+    chip.appendChild(label);
+
+    if (canEdit) {
+      chip.classList.add("is-draggable");
+      chip.style.touchAction = "none";
+      chip.addEventListener("pointerdown", (event) => {
+        startContainerContentDrag(event, contentItem, item.id);
+      });
+
+      const takeOutBtn = document.createElement("button");
+      takeOutBtn.type = "button";
+      takeOutBtn.className = "small-btn";
+      takeOutBtn.textContent = "Take Out";
+      takeOutBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        takeItemOutToFirstOpenSpot(item.id, contentItem.id);
+      });
+      chip.appendChild(takeOutBtn);
+    }
+
+    list.appendChild(chip);
+  });
+}
+
+// Fallback for the "Take Out" button: places the item at the first open
+// spot on the grid instead of requiring a precise drag-and-drop.
+async function takeItemOutToFirstOpenSpot(containerId, contentItemId) {
+  const statusEl = document.getElementById("inventory-status");
+  const container = character.inventory.find((i) => i.id === containerId);
+  if (!container) return;
+
+  const contentItem = (container.contents || []).find((i) => i.id === contentItemId);
+  if (!contentItem) return;
+
+  const occupied = new Set();
+  character.inventory.forEach((otherItem) => {
+    otherItem.cells.forEach(([dr, dc]) => {
+      occupied.add(`${otherItem.origin.row + dr},${otherItem.origin.col + dc}`);
+    });
+  });
+
+  for (let r = 0; r < 6; r++) {
+    for (let c = 0; c < 6; c++) {
+      const translated = contentItem.cells.map(([dr, dc]) => [r + dr, c + dc]);
+      const inBounds = translated.every(([tr, tc]) => tr >= 0 && tr < 6 && tc >= 0 && tc < 6);
+      const overlaps = translated.some(([tr, tc]) => occupied.has(`${tr},${tc}`));
+      if (inBounds && !overlaps) {
+        await takeItemOutOfContainer(containerId, contentItemId, r, c);
+        return;
+      }
+    }
+  }
+
+  statusEl.textContent = "No room on the grid to take that out right now.";
 }
 
 // ---- Story & Notes ----

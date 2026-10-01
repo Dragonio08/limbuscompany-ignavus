@@ -24,12 +24,28 @@ function renderLoggedOut() {
   navAccount.appendChild(link);
 }
 
-function renderLoggedIn(user) {
+async function renderLoggedIn(user) {
   clearNavAccount();
 
-  const email = document.createElement("span");
-  email.className = "nav-account-email";
-  email.textContent = user.email;
+  const { data: profile } = await client
+    .from("profiles")
+    .select("username, avatar")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const avatarBtn = document.createElement("a");
+  avatarBtn.className = "nav-avatar";
+  avatarBtn.href = "profile.html";
+  avatarBtn.setAttribute("aria-label", "Your profile");
+  avatarBtn.title = (profile && profile.username) || "Your profile";
+
+  if (profile && profile.avatar) {
+    avatarBtn.classList.add("has-image");
+    avatarBtn.style.backgroundImage = `url("${profile.avatar}")`;
+  } else {
+    const initial = (profile && profile.username) ? profile.username.charAt(0).toUpperCase() : "?";
+    avatarBtn.textContent = initial;
+  }
 
   const signOutButton = document.createElement("button");
   signOutButton.className = "nav-account-link";
@@ -39,7 +55,7 @@ function renderLoggedIn(user) {
     await client.auth.signOut();
   });
 
-  navAccount.appendChild(email);
+  navAccount.appendChild(avatarBtn);
   navAccount.appendChild(signOutButton);
 }
 

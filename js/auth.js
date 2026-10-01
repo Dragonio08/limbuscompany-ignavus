@@ -58,7 +58,15 @@ form.addEventListener("submit", async (event) => {
 
   try {
     if (mode === "signup") {
-      const { data, error } = await client.auth.signUp({ email, password });
+      // Send the confirmation link to our own landing page, wherever this
+      // site happens to be hosted, instead of relying on the Supabase
+      // project's default Site URL (which may point somewhere else).
+      const emailRedirectTo = new URL("email-confirmed.html", window.location.href).href;
+      const { data, error } = await client.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo },
+      });
       if (error) throw error;
       if (data.user && !data.session) {
         setMessage(

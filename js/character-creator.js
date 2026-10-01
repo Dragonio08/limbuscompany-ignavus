@@ -41,7 +41,7 @@ function updateStatUI(stat) {
     .querySelectorAll(`.stat-btn[data-stat="${stat}"]`)
     .forEach((btn) => {
       if (btn.dataset.action === "inc") {
-        btn.disabled = pointsRemaining <= 0 || stats[stat] >= 6;
+        btn.disabled = pointsRemaining <= 0 || stats[stat] >= 5;
       } else {
         btn.disabled = stats[stat] <= 1;
       }
@@ -52,7 +52,7 @@ document.querySelectorAll(".stat-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     const stat = btn.dataset.stat;
     if (btn.dataset.action === "inc") {
-      if (pointsRemaining > 0 && stats[stat] < 6) {
+      if (pointsRemaining > 0 && stats[stat] < 5) {
         stats[stat] += 1;
         pointsRemaining -= 1;
       }
