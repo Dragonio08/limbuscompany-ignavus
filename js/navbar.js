@@ -9,6 +9,14 @@ var client = window.client;
 
 const navAccount = document.getElementById("nav-account");
 
+// getSession() and onAuthStateChange can both fire around the same time,
+// and renderLoggedIn is async (it queries the profile), so two calls can
+// overlap. This token makes sure only the most recently started call is
+// allowed to actually touch the DOM, and the clear+append happens as one
+// synchronous block right after the await, so a stale call can't leave
+// duplicate elements behind.
+let renderToken = 0;
+
 function clearNavAccount() {
   while (navAccount.firstChild) {
     navAccount.removeChild(navAccount.firstChild);
@@ -16,6 +24,7 @@ function clearNavAccount() {
 }
 
 function renderLoggedOut() {
+  renderToken += 1;
   clearNavAccount();
   const link = document.createElement("a");
   link.className = "nav-account-link";
@@ -25,13 +34,17 @@ function renderLoggedOut() {
 }
 
 async function renderLoggedIn(user) {
-  clearNavAccount();
+  const myToken = ++renderToken;
 
   const { data: profile } = await client
     .from("profiles")
     .select("username, avatar")
     .eq("id", user.id)
     .maybeSingle();
+
+  if (myToken !== renderToken) return; // a newer call superseded this one
+
+  clearNavAccount();
 
   const avatarBtn = document.createElement("a");
   avatarBtn.className = "nav-avatar";
@@ -47,6 +60,15 @@ async function renderLoggedIn(user) {
     avatarBtn.textContent = initial;
   }
 
+  navAccount.appendChild(avatarBtn);
+
+  if (profile && profile.username) {
+    const usernameEl = document.createElement("span");
+    usernameEl.className = "nav-username display";
+    usernameEl.textContent = profile.username;
+    navAccount.appendChild(usernameEl);
+  }
+
   const signOutButton = document.createElement("button");
   signOutButton.className = "nav-account-link";
   signOutButton.type = "button";
@@ -55,7 +77,6 @@ async function renderLoggedIn(user) {
     await client.auth.signOut();
   });
 
-  navAccount.appendChild(avatarBtn);
   navAccount.appendChild(signOutButton);
 }
 

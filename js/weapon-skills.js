@@ -95,7 +95,7 @@ function skillDealsDamage(skill) {
 // Red is free (every damaging card is Red by default). Pale costs half of
 // the card's total points, rounded down.
 function damageTypeCost(type, totalPoints) {
-  if (type === "white") return 6;
+  if (type === "white") return 8;
   if (type === "black") return 13;
   if (type === "pale") return Math.floor(totalPoints / 2);
   return 0;

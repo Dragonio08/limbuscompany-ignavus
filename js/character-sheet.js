@@ -12,7 +12,8 @@ const DESCRIPTORS = {
   3: "Capable",
   4: "Skilled",
   5: "Prodigy",
-  6: "Godlike",
+  6: "Master",
+  7: "Godlike",
 };
 
 const CLASSIFICATIONS = [
@@ -212,7 +213,7 @@ function wireClassification() {
 // ---- Stats (read-only, fixed at creation) + Skills ----
 
 function skillDescriptorCapped(value) {
-  return DESCRIPTORS[Math.min(value, 6)];
+  return DESCRIPTORS[Math.min(value, 7)];
 }
 
 function renderStats() {

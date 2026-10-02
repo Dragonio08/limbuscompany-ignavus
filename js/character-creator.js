@@ -21,7 +21,8 @@ const DESCRIPTORS = {
   3: "Capable",
   4: "Skilled",
   5: "Prodigy",
-  6: "Godlike",
+  6: "Master",
+  7: "Godlike",
 };
 
 const STAT_NAMES = ["fortitude", "prudence", "temperance", "justice"];
@@ -71,7 +72,7 @@ STAT_NAMES.forEach(updateStatUI);
 
 // ---- Skills (signature / proficient picks) ----
 
-const DESCRIPTOR_CAP = 6;
+const DESCRIPTOR_CAP = 7;
 const skillPicks = { signature: null, proficient: [] };
 
 function skillValue(archetype, skillKey) {
