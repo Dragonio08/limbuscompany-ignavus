@@ -899,6 +899,12 @@ body::before {
   gap: 0.6rem;
 }
 
+.money-row label {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+}
+
 .money-row input {
   width: 6rem;
   font-family: 'Times New Roman', Times, serif;
@@ -1691,6 +1697,12 @@ body::before {
 .nav-avatar:hover,
 .nav-avatar:focus-visible {
   border-color: var(--gold);
+}
+
+.nav-username {
+  color: var(--yellow);
+  font-size: 1.1rem;
+  letter-spacing: 0.03em;
 }
 
 /* ---------- Profile page ---------- */
