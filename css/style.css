@@ -642,11 +642,42 @@ body::before {
   flex-wrap: wrap;
 }
 
+.creator-warning {
+  color: var(--yellow);
+  font-size: 0.85rem;
+  font-style: italic;
+  margin: 0.4rem 0 0;
+  min-height: 1.1rem;
+}
+
 .points-remaining {
   font-family: 'Times New Roman', Times, serif;
   font-size: 0.95rem;
   color: var(--ink-dim);
   letter-spacing: 0;
+}
+
+.creator-field-optional {
+  font-family: 'Times New Roman', Times, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+  letter-spacing: 0;
+}
+
+.color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.color-picker-row input[type="color"] {
+  width: 54px;
+  height: 40px;
+  padding: 2px;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  cursor: pointer;
 }
 
 .creator-note {
@@ -770,6 +801,8 @@ body::before {
   font-size: 0.72rem;
   letter-spacing: 0;
   text-transform: uppercase;
+  line-height: 1.1;
+  margin: 0.05rem 0 0.2rem;
 }
 
 .skill-description {
@@ -1032,6 +1065,13 @@ body::before {
   margin: 0 0 0.9rem;
 }
 
+.sheet-quote {
+  font-family: 'Liberation Sans', Arial, sans-serif;
+  font-style: italic;
+  font-size: 1.1rem;
+  margin: 0.3rem 0 0;
+}
+
 .sheet-meta {
   text-align: left;
   color: var(--ink-dim);
@@ -1150,6 +1190,10 @@ body::before {
   color: var(--ink-dim);
   font-style: italic;
   font-size: 0.9rem;
+}
+
+.save-status.is-error {
+  color: var(--crimson-bright);
 }
 
 /* ---------- Sheet tabs (Innocence / E.G.O) ---------- */
