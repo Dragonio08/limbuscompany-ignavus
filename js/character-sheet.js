@@ -90,6 +90,15 @@ function renderSheet() {
   document.getElementById("sheet-district").textContent =
     `Born in ${character.district}`;
 
+  const quoteEl = document.getElementById("sheet-quote");
+  if (character.quote) {
+    quoteEl.textContent = `"${character.quote}"`;
+    quoteEl.style.color = character.signature_color || "var(--ink)";
+    quoteEl.style.display = "block";
+  } else {
+    quoteEl.style.display = "none";
+  }
+
   renderPortrait();
   wirePortrait();
   renderLevelXp();
@@ -340,20 +349,20 @@ function renderSkillsReadOnly(archetype, archetypeValue) {
     valueSpan.className = "skill-value";
     valueSpan.textContent = `${value} · ${skillDescriptorCapped(value)}`;
 
-    const quoteSpan = document.createElement("span");
-    quoteSpan.className = "skill-quote";
-    quoteSpan.style.color = `var(--stat-${archetype})`;
-    quoteSpan.textContent = skill.quote;
-
     nameLine.appendChild(nameSpan);
     nameLine.appendChild(valueSpan);
-    nameLine.appendChild(quoteSpan);
+
+    const quoteLine = document.createElement("p");
+    quoteLine.className = "skill-quote";
+    quoteLine.style.color = `var(--stat-${archetype})`;
+    quoteLine.textContent = skill.quote;
 
     const desc = document.createElement("p");
     desc.className = "skill-description";
     desc.textContent = skill.description;
 
     info.appendChild(nameLine);
+    info.appendChild(quoteLine);
     info.appendChild(desc);
     row.appendChild(info);
     container.appendChild(row);

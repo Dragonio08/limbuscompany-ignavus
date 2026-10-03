@@ -34,38 +34,63 @@ const DESCRIPTORS = {
   7: "Godlike",
 };
 
+// NPCs have no point limit on their stats — a DM can build anything.
+// We still track what a player's budget *would* be (7 points, 5 per stat)
+// purely to show a non-blocking warning when an NPC goes beyond that.
+const PLAYER_TOTAL_POINTS = 7;
+const PLAYER_STAT_CAP = 5;
+
 const STAT_NAMES = ["fortitude", "prudence", "temperance", "justice"];
 const stats = { fortitude: 1, prudence: 1, temperance: 1, justice: 1 };
-const TOTAL_POINTS = 7;
-let pointsRemaining = TOTAL_POINTS;
+let pointsRemaining = PLAYER_TOTAL_POINTS;
 
 const pointsRemainingEl = document.getElementById("points-remaining");
+const statsWarningEl = document.getElementById("stats-warning");
+
+function updateStatsWarning() {
+  const overStatCap = STAT_NAMES.some((s) => stats[s] > PLAYER_STAT_CAP);
+  const overBudget = pointsRemaining < 0;
+  if (!statsWarningEl) return;
+  statsWarningEl.dataset.statWarning =
+    overStatCap || overBudget
+      ? "⚠ This exceeds what a player could normally build (max 5 per stat, 7 points total)."
+      : "";
+  refreshWarningText();
+}
+
+function refreshWarningText() {
+  if (!statsWarningEl) return;
+  const statWarning = statsWarningEl.dataset.statWarning || "";
+  const skillWarning = statsWarningEl.dataset.skillWarning || "";
+  const combined = [statWarning, skillWarning].filter(Boolean).join(" ");
+  statsWarningEl.textContent = combined ? combined + " That's fine for an NPC." : "";
+}
 
 function updateStatUI(stat) {
   document.getElementById(`stat-value-${stat}`).textContent = stats[stat];
   document.getElementById(`stat-descriptor-${stat}`).textContent =
-    DESCRIPTORS[stats[stat]];
+    DESCRIPTORS[Math.min(stats[stat], 7)];
   pointsRemainingEl.textContent = pointsRemaining;
 
   document
     .querySelectorAll(`.stat-btn[data-stat="${stat}"]`)
     .forEach((btn) => {
       if (btn.dataset.action === "inc") {
-        btn.disabled = pointsRemaining <= 0 || stats[stat] >= 5;
+        btn.disabled = false; // no cap for NPCs
       } else {
         btn.disabled = stats[stat] <= 1;
       }
     });
+
+  updateStatsWarning();
 }
 
 document.querySelectorAll(".stat-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     const stat = btn.dataset.stat;
     if (btn.dataset.action === "inc") {
-      if (pointsRemaining > 0 && stats[stat] < 5) {
-        stats[stat] += 1;
-        pointsRemaining -= 1;
-      }
+      stats[stat] += 1;
+      pointsRemaining -= 1;
     } else {
       if (stats[stat] > 1) {
         stats[stat] -= 1;
@@ -100,7 +125,15 @@ function updateSkillPicksStatus() {
   const sigLabel = skillPicks.signature
     ? findSkillByKey(skillPicks.signature).name
     : "none chosen";
-  statusEl.textContent = `Signature: ${sigLabel} · Proficient: ${skillPicks.proficient.length}/2 chosen`;
+  statusEl.textContent = `Signature: ${sigLabel} · Proficient: ${skillPicks.proficient.length} chosen`;
+
+  if (statsWarningEl) {
+    statsWarningEl.dataset.skillWarning =
+      skillPicks.proficient.length > 2
+        ? "⚠ More Proficient skills than a player could normally pick (max 2)."
+        : "";
+    refreshWarningText();
+  }
 }
 
 function findSkillByKey(key) {
@@ -122,7 +155,7 @@ function toggleProficient(skillKey) {
   if (skillPicks.proficient.includes(skillKey)) {
     skillPicks.proficient = skillPicks.proficient.filter((k) => k !== skillKey);
   } else {
-    if (skillPicks.proficient.length >= 2) return;
+    // No cap for NPCs — updateSkillPicksStatus() warns instead of blocking.
     skillPicks.proficient.push(skillKey);
   }
   renderAllSkills();
@@ -153,20 +186,20 @@ function renderSkillsForArchetype(archetype) {
     valueSpan.className = "skill-value";
     valueSpan.textContent = `${value} · ${skillDescriptor(value)}`;
 
-    const quoteSpan = document.createElement("span");
-    quoteSpan.className = "skill-quote";
-    quoteSpan.style.color = `var(--stat-${archetype})`;
-    quoteSpan.textContent = skill.quote;
-
     nameLine.appendChild(nameSpan);
     nameLine.appendChild(valueSpan);
-    nameLine.appendChild(quoteSpan);
+
+    const quoteLine = document.createElement("p");
+    quoteLine.className = "skill-quote";
+    quoteLine.style.color = `var(--stat-${archetype})`;
+    quoteLine.textContent = skill.quote;
 
     const desc = document.createElement("p");
     desc.className = "skill-description";
     desc.textContent = skill.description;
 
     info.appendChild(nameLine);
+    info.appendChild(quoteLine);
     info.appendChild(desc);
 
     const tags = document.createElement("div");
@@ -183,8 +216,7 @@ function renderSkillsForArchetype(archetype) {
     profBtn.type = "button";
     profBtn.className = "skill-tag-btn" + (isProficient ? " is-proficient" : "");
     profBtn.textContent = "Proficient";
-    profBtn.disabled =
-      isSignature || (!isProficient && skillPicks.proficient.length >= 2);
+    profBtn.disabled = isSignature;
     profBtn.addEventListener("click", () => toggleProficient(skill.key));
 
     tags.appendChild(sigBtn);
@@ -339,6 +371,50 @@ function packItems(items) {
 
 // ---- Submit ----
 
+// ---- Signature Color availability ----
+
+const colorInput = document.getElementById("char-color");
+const colorStatusEl = document.getElementById("color-status");
+let colorCheckToken = 0;
+let colorIsAvailable = true;
+
+async function checkColorAvailability() {
+  const myToken = ++colorCheckToken;
+  const color = colorInput.value;
+  colorStatusEl.textContent = "Checking…";
+
+  const { data, error } = await client
+    .from("characters")
+    .select("id")
+    .eq("signature_color", color)
+    .limit(1);
+
+  if (myToken !== colorCheckToken) return;
+
+  if (error) {
+    colorStatusEl.textContent = "";
+    colorIsAvailable = true;
+    return;
+  }
+
+  if (data && data.length > 0) {
+    colorStatusEl.textContent = "Taken by another character.";
+    colorStatusEl.classList.add("is-error");
+    colorIsAvailable = false;
+  } else {
+    colorStatusEl.textContent = "Available.";
+    colorStatusEl.classList.remove("is-error");
+    colorIsAvailable = true;
+  }
+}
+
+colorInput.addEventListener("input", () => {
+  colorStatusEl.classList.remove("is-error");
+  colorStatusEl.textContent = "";
+});
+colorInput.addEventListener("change", checkColorAvailability);
+checkColorAvailability();
+
 const form = document.getElementById("creator-form");
 const errorEl = document.getElementById("creator-error");
 const submitButton = document.getElementById("creator-submit");
@@ -348,13 +424,20 @@ form.addEventListener("submit", async (event) => {
   errorEl.textContent = "";
 
   const name = document.getElementById("char-name").value.trim();
+  const quote = document.getElementById("char-quote").value.trim();
   const district = document.getElementById("char-district").value;
+  const signatureColor = colorInput.value;
   const containerName = document.getElementById("container-name").value.trim();
   const weaponName = document.getElementById("weapon-name").value.trim();
   const story = document.getElementById("char-story").value.trim();
 
   if (!name || !district) {
     errorEl.textContent = "Fill in your name and district.";
+    return;
+  }
+
+  if (!colorIsAvailable) {
+    errorEl.textContent = "Pick a Signature Color that isn't already taken.";
     return;
   }
 
@@ -383,11 +466,6 @@ form.addEventListener("submit", async (event) => {
 
   if (!skillPicks.signature) {
     errorEl.textContent = "Choose 1 signature skill.";
-    return;
-  }
-
-  if (skillPicks.proficient.length !== 2) {
-    errorEl.textContent = "Choose exactly 2 proficient skills.";
     return;
   }
 
@@ -433,13 +511,18 @@ form.addEventListener("submit", async (event) => {
       skill_picks: skillPicks,
       inventory,
       story,
+      quote,
+      signature_color: signatureColor,
       is_npc: true,
     })
     .select()
     .single();
 
   if (error) {
-    errorEl.textContent = "Could not save character: " + error.message;
+    errorEl.textContent =
+      error.code === "23505"
+        ? "That Signature Color was just taken by another character — pick a different one."
+        : "Could not save character: " + error.message;
     submitButton.disabled = false;
     return;
   }

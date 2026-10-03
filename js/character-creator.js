@@ -144,20 +144,20 @@ function renderSkillsForArchetype(archetype) {
     valueSpan.className = "skill-value";
     valueSpan.textContent = `${value} · ${skillDescriptor(value)}`;
 
-    const quoteSpan = document.createElement("span");
-    quoteSpan.className = "skill-quote";
-    quoteSpan.style.color = `var(--stat-${archetype})`;
-    quoteSpan.textContent = skill.quote;
-
     nameLine.appendChild(nameSpan);
     nameLine.appendChild(valueSpan);
-    nameLine.appendChild(quoteSpan);
+
+    const quoteLine = document.createElement("p");
+    quoteLine.className = "skill-quote";
+    quoteLine.style.color = `var(--stat-${archetype})`;
+    quoteLine.textContent = skill.quote;
 
     const desc = document.createElement("p");
     desc.className = "skill-description";
     desc.textContent = skill.description;
 
     info.appendChild(nameLine);
+    info.appendChild(quoteLine);
     info.appendChild(desc);
 
     const tags = document.createElement("div");
@@ -330,6 +330,50 @@ function packItems(items) {
 
 // ---- Submit ----
 
+// ---- Signature Color availability ----
+
+const colorInput = document.getElementById("char-color");
+const colorStatusEl = document.getElementById("color-status");
+let colorCheckToken = 0;
+let colorIsAvailable = true;
+
+async function checkColorAvailability() {
+  const myToken = ++colorCheckToken;
+  const color = colorInput.value;
+  colorStatusEl.textContent = "Checking…";
+
+  const { data, error } = await client
+    .from("characters")
+    .select("id")
+    .eq("signature_color", color)
+    .limit(1);
+
+  if (myToken !== colorCheckToken) return; // a newer check superseded this one
+
+  if (error) {
+    colorStatusEl.textContent = "";
+    colorIsAvailable = true; // don't block submission over a failed check
+    return;
+  }
+
+  if (data && data.length > 0) {
+    colorStatusEl.textContent = "Taken by another character.";
+    colorStatusEl.classList.add("is-error");
+    colorIsAvailable = false;
+  } else {
+    colorStatusEl.textContent = "Available.";
+    colorStatusEl.classList.remove("is-error");
+    colorIsAvailable = true;
+  }
+}
+
+colorInput.addEventListener("input", () => {
+  colorStatusEl.classList.remove("is-error");
+  colorStatusEl.textContent = "";
+});
+colorInput.addEventListener("change", checkColorAvailability);
+checkColorAvailability();
+
 const form = document.getElementById("creator-form");
 const errorEl = document.getElementById("creator-error");
 const submitButton = document.getElementById("creator-submit");
@@ -339,13 +383,20 @@ form.addEventListener("submit", async (event) => {
   errorEl.textContent = "";
 
   const name = document.getElementById("char-name").value.trim();
+  const quote = document.getElementById("char-quote").value.trim();
   const district = document.getElementById("char-district").value;
+  const signatureColor = colorInput.value;
   const containerName = document.getElementById("container-name").value.trim();
   const weaponName = document.getElementById("weapon-name").value.trim();
   const story = document.getElementById("char-story").value.trim();
 
   if (!name || !district) {
     errorEl.textContent = "Fill in your name and district.";
+    return;
+  }
+
+  if (!colorIsAvailable) {
+    errorEl.textContent = "Pick a Signature Color that isn't already taken.";
     return;
   }
 
@@ -424,12 +475,17 @@ form.addEventListener("submit", async (event) => {
       skill_picks: skillPicks,
       inventory,
       story,
+      quote,
+      signature_color: signatureColor,
     })
     .select()
     .single();
 
   if (error) {
-    errorEl.textContent = "Could not save character: " + error.message;
+    errorEl.textContent =
+      error.code === "23505"
+        ? "That Signature Color was just taken by another character — pick a different one."
+        : "Could not save character: " + error.message;
     submitButton.disabled = false;
     return;
   }

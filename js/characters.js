@@ -193,7 +193,7 @@ async function loadCharacters() {
     const usernames = await fetchUsernames(otherCharacters.map((c) => c.owner_id));
     usersScrollBox.innerHTML = "";
     otherCharacters.forEach((character) => {
-      const ownerLabel = usernames.get(character.owner_id) || "a traveler";
+      const ownerLabel = usernames.get(character.owner_id) || "unnamed";
       usersScrollBox.appendChild(
         renderCharacterCard(character, ownerLabel, () => {
           if (!usersScrollBox.querySelector(".char-card-row")) {
