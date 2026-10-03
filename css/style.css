@@ -506,10 +506,22 @@ body::before {
   background: var(--crimson);
 }
 
-#dm-section {
+.chars-tabs {
+  margin: 0 1.6rem 0;
+}
+
+.chars-tab-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+
+.char-card-owner {
+  color: var(--gold);
+  font-style: italic;
+  font-size: 0.85rem;
+  margin: 0 0 0.2rem;
 }
 
 .char-card-name {
@@ -534,11 +546,51 @@ body::before {
   margin: 0 auto;
 }
 
-.creator-title,
-.sheet-name {
+.creator-title {
   font-size: clamp(2rem, 5vw, 3rem);
   margin: 0 0 1.6rem;
   text-align: center;
+}
+
+.sheet-name {
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  margin: 0;
+  text-align: left;
+}
+
+.sheet-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.6rem;
+}
+
+.sheet-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.sheet-portrait-btn {
+  flex-shrink: 0;
+  width: 84px;
+  height: 84px;
+  border: 2px solid var(--line);
+  background-color: var(--bg-panel);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.sheet-portrait-btn:hover,
+.sheet-portrait-btn:focus-visible {
+  border-color: var(--gold);
 }
 
 .creator-field {
@@ -699,17 +751,25 @@ body::before {
 .skill-name-line {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 0.5rem;
   font-family: 'Bebas Neue', sans-serif;
   letter-spacing: 0.03em;
   font-size: 0.85rem;
-  cursor: help;
 }
 
 .skill-value {
   color: var(--ink-dim);
   font-family: 'Times New Roman', Times, serif;
   font-size: 0.75rem;
+}
+
+.skill-quote {
+  font-family: 'Times New Roman', Times, serif;
+  font-style: italic;
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .skill-description {
@@ -940,6 +1000,12 @@ body::before {
   margin: 0.6rem 0 0.8rem;
 }
 
+.item-name-row.has-divider {
+  border-top: 1px solid var(--line);
+  margin-top: 1.2rem;
+  padding-top: 1.1rem;
+}
+
 .item-name-row label {
   font-family: 'Bebas Neue', sans-serif;
   letter-spacing: 0.04em;
@@ -967,10 +1033,10 @@ body::before {
 }
 
 .sheet-meta {
-  text-align: center;
+  text-align: left;
   color: var(--ink-dim);
   font-style: italic;
-  margin: -1rem 0 1.6rem;
+  margin: 0.2rem 0 0;
 }
 
 .level-row {
