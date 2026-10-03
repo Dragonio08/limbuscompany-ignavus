@@ -18,8 +18,13 @@
   </div>
 
   <template id="sheet-template">
-    <h1 id="sheet-name" class="sheet-name display"></h1>
-    <p id="sheet-district" class="sheet-meta"></p>
+    <div class="sheet-header-row">
+      <div class="sheet-header-text">
+        <h1 id="sheet-name" class="sheet-name display"></h1>
+        <p id="sheet-district" class="sheet-meta"></p>
+      </div>
+      <button id="sheet-portrait-btn" class="sheet-portrait-btn" type="button" aria-label="Upload a portrait">👤</button>
+    </div>
 
     <div class="sheet-tabs" role="tablist">
       <button id="tab-btn-innocence" class="sheet-tab is-active" type="button" role="tab" aria-selected="true">Innocence</button>
@@ -146,7 +151,7 @@
           <div id="container-contents-list" class="container-contents-list"></div>
           <p class="creator-note">Drag an item onto this container in the grid to store it. Drag an item here onto the grid to take it out, or use its "Take Out" button.</p>
         </div>
-        <div class="item-name-row">
+        <div id="item-name-row" class="item-name-row">
           <label for="item-name-input">Name</label>
           <input id="item-name-input" type="text" maxlength="40" class="item-name-input">
           <button id="item-name-save" class="small-btn" type="button">Save Name</button>

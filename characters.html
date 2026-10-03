@@ -15,16 +15,26 @@
 
   <div class="chars-page">
     <div class="chars-header">
-      <h1 class="chars-title display">Characters</h1>
+      <h1 id="chars-title" class="chars-title display">Characters</h1>
       <button id="new-character-btn" class="new-character-btn display" type="button">Make new +</button>
     </div>
-    <div id="chars-scroll-box" class="chars-scroll-box"></div>
 
-    <div id="dm-section" style="display: none;">
-      <div class="chars-header">
-        <h2 class="chars-title display">User's Characters</h2>
-      </div>
-      <div id="dm-scroll-box" class="chars-scroll-box"></div>
+    <div class="sheet-tabs chars-tabs" role="tablist">
+      <button id="tab-btn-mine" class="sheet-tab is-active" type="button" role="tab" aria-selected="true">Characters</button>
+      <button id="tab-btn-users" class="sheet-tab" type="button" role="tab" aria-selected="false">User's Characters</button>
+      <button id="tab-btn-npcs" class="sheet-tab" type="button" role="tab" aria-selected="false" style="display: none;">NPCs</button>
+    </div>
+
+    <div id="tab-mine" class="chars-tab-panel">
+      <div id="chars-scroll-box" class="chars-scroll-box"></div>
+    </div>
+
+    <div id="tab-users" class="chars-tab-panel" style="display: none;">
+      <div id="users-scroll-box" class="chars-scroll-box"></div>
+    </div>
+
+    <div id="tab-npcs" class="chars-tab-panel" style="display: none;">
+      <div id="npcs-scroll-box" class="chars-scroll-box"></div>
     </div>
   </div>
 
