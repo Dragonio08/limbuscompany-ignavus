@@ -24,6 +24,11 @@
       </div>
 
       <div class="creator-field">
+        <label for="char-quote">Quote <span class="creator-field-optional">(optional)</span></label>
+        <input id="char-quote" type="text" maxlength="140" placeholder="Something your character might say">
+      </div>
+
+      <div class="creator-field">
         <label for="char-district">Birth District</label>
         <select id="char-district" required>
           <option value="" disabled selected>Choose a district</option>
@@ -55,6 +60,15 @@
           <option>Z Corp.</option>
           <option>Outskirts</option>
         </select>
+      </div>
+
+      <div class="creator-field">
+        <label for="char-color">Signature Color</label>
+        <div class="color-picker-row">
+          <input id="char-color" type="color" value="#8a1a1a">
+          <span id="color-status" class="save-status"></span>
+        </div>
+        <p class="creator-note">Pick a color just for this character — no two characters can share the same one.</p>
       </div>
 
       <div class="creator-section">

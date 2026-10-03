@@ -24,6 +24,11 @@
       </div>
 
       <div class="creator-field">
+        <label for="char-quote">Quote <span class="creator-field-optional">(optional)</span></label>
+        <input id="char-quote" type="text" maxlength="140" placeholder="Something this NPC might say">
+      </div>
+
+      <div class="creator-field">
         <label for="char-district">Birth District</label>
         <select id="char-district" required>
           <option value="" disabled selected>Choose a district</option>
@@ -57,10 +62,20 @@
         </select>
       </div>
 
+      <div class="creator-field">
+        <label for="char-color">Signature Color</label>
+        <div class="color-picker-row">
+          <input id="char-color" type="color" value="#8a1a1a">
+          <span id="color-status" class="save-status"></span>
+        </div>
+        <p class="creator-note">Pick a color just for this character — no two characters can share the same one.</p>
+      </div>
+
       <div class="creator-section">
         <h2 class="creator-section-title display">
           Stats
           <span class="points-remaining">Points remaining: <span id="points-remaining">7</span></span>
+          <p id="stats-warning" class="creator-warning"></p>
         </h2>
         <p class="creator-note">Pick 1 signature skill (+2) and 2 proficient skills (+1) across all your skills below. Hover a skill's name for its subtitle.</p>
         <p class="points-remaining" id="skill-picks-status">Signature: none chosen · Proficient: 0/2 chosen</p>
