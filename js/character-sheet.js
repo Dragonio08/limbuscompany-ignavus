@@ -90,6 +90,8 @@ function renderSheet() {
   document.getElementById("sheet-district").textContent =
     `Born in ${character.district}`;
 
+  renderPortrait();
+  wirePortrait();
   renderLevelXp();
   renderClassification();
   renderStats();
@@ -107,6 +109,83 @@ function renderSheet() {
   renderEgo();
   wireEgoSlotButton();
   wireVitals();
+}
+
+// ---- Portrait ----
+
+function pickSquareImage(size) {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      if (!file || !file.type.startsWith("image/")) {
+        resolve(null);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onerror = () => resolve(null);
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => resolve(null);
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+          const scale = Math.max(size / img.width, size / img.height);
+          const drawW = img.width * scale;
+          const drawH = img.height * scale;
+          ctx.drawImage(img, (size - drawW) / 2, (size - drawH) / 2, drawW, drawH);
+          resolve(canvas.toDataURL("image/jpeg", 0.8));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    input.click();
+  });
+}
+
+function renderPortrait() {
+  const btn = document.getElementById("sheet-portrait-btn");
+  if (character.portrait) {
+    btn.style.backgroundImage = `url("${character.portrait}")`;
+    btn.textContent = "";
+  } else {
+    btn.style.backgroundImage = "";
+    btn.textContent = "👤";
+  }
+}
+
+function wirePortrait() {
+  const btn = document.getElementById("sheet-portrait-btn");
+  const canEdit = isOwner || isDm;
+  btn.disabled = !canEdit;
+  btn.style.cursor = canEdit ? "pointer" : "default";
+  if (!canEdit) return;
+
+  btn.addEventListener("click", async () => {
+    const image = await pickSquareImage(240);
+    if (!image) return;
+
+    const { error } = await client
+      .from("characters")
+      .update({ portrait: image })
+      .eq("id", character.id);
+
+    if (error) {
+      window.alert("Couldn't save portrait: " + error.message);
+      return;
+    }
+
+    character.portrait = image;
+    renderPortrait();
+  });
 }
 
 // ---- Level & XP ----
@@ -253,7 +332,6 @@ function renderSkillsReadOnly(archetype, archetypeValue) {
 
     const nameLine = document.createElement("div");
     nameLine.className = "skill-name-line";
-    nameLine.title = skill.quote;
 
     const nameSpan = document.createElement("span");
     nameSpan.textContent = skill.name + tag;
@@ -262,8 +340,14 @@ function renderSkillsReadOnly(archetype, archetypeValue) {
     valueSpan.className = "skill-value";
     valueSpan.textContent = `${value} · ${skillDescriptorCapped(value)}`;
 
+    const quoteSpan = document.createElement("span");
+    quoteSpan.className = "skill-quote";
+    quoteSpan.style.color = `var(--stat-${archetype})`;
+    quoteSpan.textContent = skill.quote;
+
     nameLine.appendChild(nameSpan);
     nameLine.appendChild(valueSpan);
+    nameLine.appendChild(quoteSpan);
 
     const desc = document.createElement("p");
     desc.className = "skill-description";
@@ -653,9 +737,11 @@ function showItemDetail(item) {
   // ---- Name (owner or DM can rename either a Weapon or a Container) ----
   const nameInput = document.getElementById("item-name-input");
   const nameStatus = document.getElementById("item-name-status");
+  const nameRow = document.getElementById("item-name-row");
   nameStatus.textContent = "";
   nameInput.value = item.name;
   nameInput.disabled = !canEditItem;
+  nameRow.classList.toggle("has-divider", item.type === "container");
 
   const nameSaveBtn = document.getElementById("item-name-save");
   nameSaveBtn.style.display = canEditItem ? "inline-block" : "none";

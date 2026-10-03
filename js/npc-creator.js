@@ -6,10 +6,19 @@ if (!window.client) {
 }
 var client = window.client;
 
-// ---- Auth guard: must be logged in to create a character ----
-client.auth.getSession().then(({ data }) => {
+// ---- Auth guard: only a Dungeon Master can create an NPC ----
+client.auth.getSession().then(async ({ data }) => {
   if (!data.session) {
     window.location.href = "login.html";
+    return;
+  }
+  const { data: profile } = await client
+    .from("profiles")
+    .select("is_dm")
+    .eq("id", data.session.user.id)
+    .maybeSingle();
+  if (!profile || !profile.is_dm) {
+    window.location.href = "characters.html";
   }
 });
 
@@ -424,6 +433,7 @@ form.addEventListener("submit", async (event) => {
       skill_picks: skillPicks,
       inventory,
       story,
+      is_npc: true,
     })
     .select()
     .single();

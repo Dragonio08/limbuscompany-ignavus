@@ -26,7 +26,10 @@ const ATTRIBUTE_RULES = {
     label: "Block",
     addCost: 6,
     perUnit: 1,
-    tooltip: "1 point = 1 Block.",
+    softCap: 15,
+    perUnitAfterCap: 2,
+    tooltip:
+      "1 point = 1 Block, up to 15 points spent. Past 15, every 2 extra points only adds 1 more Block.",
   },
   inflict: {
     label: "Inflict status",
