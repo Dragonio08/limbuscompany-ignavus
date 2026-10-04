@@ -64,8 +64,10 @@ body::before {
   padding-top: calc(2rem + 60px);
   border-bottom: 1px solid var(--line);
   background-color: var(--bg);
-  background-image: url('assets/background-graphic.png');
-  background-repeat: repeat;
+  background-image: url('../assets/background-graphic.png');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
 }
 
 .hero-mark {
