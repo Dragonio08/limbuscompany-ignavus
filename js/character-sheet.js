@@ -833,13 +833,15 @@ function showItemDetail(item) {
   const descStatus = document.getElementById("item-description-status");
   descStatus.textContent = "";
   descInput.value = item.description || "";
+  descInput.disabled = !canEditItem;
 
   const descSaveBtn = document.getElementById("item-description-save");
+  descSaveBtn.style.display = canEditItem ? "inline-block" : "none";
   const newDescSaveBtn = descSaveBtn.cloneNode(true); // clear old listeners
   descSaveBtn.parentNode.replaceChild(newDescSaveBtn, descSaveBtn);
 
   newDescSaveBtn.addEventListener("click", async () => {
-    if (!isOwner && !isDm) return;
+    if (!canEditItem) return;
     const description = descInput.value;
 
     const updatedInventory = character.inventory.map((invItem) =>
@@ -959,9 +961,14 @@ async function takeItemOutToFirstOpenSpot(containerId, contentItemId) {
 // ---- Story & Notes ----
 
 function wireStory() {
+  const canEdit = isOwner || isDm;
+  const saveBtn = document.getElementById("sheet-story-save");
   const status = document.getElementById("sheet-story-status");
-  document.getElementById("sheet-story-save").addEventListener("click", async () => {
-    if (!isOwner && !isDm) return;
+  saveBtn.style.display = canEdit ? "inline-block" : "none";
+  document.getElementById("sheet-story").disabled = !canEdit;
+  if (!canEdit) return;
+
+  saveBtn.addEventListener("click", async () => {
     const story = document.getElementById("sheet-story").value;
 
     const { error } = await client
@@ -975,9 +982,14 @@ function wireStory() {
 }
 
 function wireNotes() {
+  const canEdit = isOwner || isDm;
+  const saveBtn = document.getElementById("sheet-notes-save");
   const status = document.getElementById("sheet-notes-status");
-  document.getElementById("sheet-notes-save").addEventListener("click", async () => {
-    if (!isOwner && !isDm) return;
+  saveBtn.style.display = canEdit ? "inline-block" : "none";
+  document.getElementById("sheet-notes").disabled = !canEdit;
+  if (!canEdit) return;
+
+  saveBtn.addEventListener("click", async () => {
     const notes = document.getElementById("sheet-notes").value;
 
     const { error } = await client
