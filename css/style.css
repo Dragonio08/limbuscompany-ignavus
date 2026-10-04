@@ -63,12 +63,16 @@ body::before {
   padding: 2rem;
   padding-top: calc(2rem + 60px);
   border-bottom: 1px solid var(--line);
+  background-color: var(--bg);
+  background-image: url('assets/background-graphic.png');
+  background-repeat: repeat;
 }
 
 .hero-mark {
   display: block;
   width: clamp(3.4rem, 10vw, 7rem);
   height: clamp(3.4rem, 10vw, 7rem);
+  object-fit: contain;
   margin: 0 auto 0.6rem;
   opacity: 0.85;
 }
@@ -593,6 +597,11 @@ body::before {
   border-color: var(--gold);
 }
 
+.sheet-portrait-btn:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
 .creator-field {
   display: flex;
   flex-direction: column;
@@ -1068,8 +1077,9 @@ body::before {
 .sheet-quote {
   font-family: 'Liberation Sans', Arial, sans-serif;
   font-style: italic;
+  font-weight: 700;
   font-size: 1.1rem;
-  margin: 0.3rem 0 0;
+  margin: 0.05rem 0 0;
 }
 
 .sheet-meta {
