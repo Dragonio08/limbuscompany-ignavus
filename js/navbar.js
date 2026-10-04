@@ -46,6 +46,12 @@ async function renderLoggedIn(user) {
 
   clearNavAccount();
 
+  const mapLink = document.createElement("a");
+  mapLink.className = "nav-account-link";
+  mapLink.href = "map.html";
+  mapLink.textContent = "Map";
+  navAccount.appendChild(mapLink);
+
   const avatarBtn = document.createElement("a");
   avatarBtn.className = "nav-avatar";
   avatarBtn.href = "profile.html";
