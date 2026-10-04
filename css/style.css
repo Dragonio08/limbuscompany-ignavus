@@ -1865,3 +1865,223 @@ body::before {
   font-style: italic;
   margin-bottom: 1.6rem;
 }
+
+/* ---------- Navbar session participant bubbles ---------- */
+
+.nav-session-participants {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.nav-participant-bubble {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background-color: var(--bg-panel);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+  flex-shrink: 0;
+}
+
+.nav-participant-bubble.is-dm {
+  border: 2px solid var(--crimson-bright);
+}
+
+/* ---------- Map / Session page ---------- */
+
+.map-page {
+  min-height: 100vh;
+  padding: calc(60px + 1.5rem) 1.6rem 3rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.waiting-room {
+  text-align: center;
+}
+
+.waiting-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  text-align: left;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.waiting-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+}
+
+.session-mode-switcher {
+  max-width: 420px;
+  margin: 0 auto 1.4rem;
+}
+
+.session-mode-label {
+  text-align: center;
+  margin-bottom: 1.2rem;
+}
+
+.story-controls,
+.story-controls select {
+  justify-content: center;
+}
+
+.story-controls select {
+  font-family: 'Times New Roman', Times, serif;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.4rem 0.6rem;
+}
+
+.session-stage {
+  margin-top: 1rem;
+}
+
+/* ---- Story mode ---- */
+
+.story-canvas {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  min-height: 360px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+
+.story-token {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  cursor: default;
+  user-select: none;
+}
+
+.story-token.is-draggable {
+  cursor: grab;
+}
+
+.story-token-name {
+  font-size: 0.8rem;
+  color: var(--ink);
+  background: rgba(10, 9, 8, 0.75);
+  padding: 0.1rem 0.4rem;
+  white-space: nowrap;
+}
+
+.token-portrait {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background-color: var(--bg-panel);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  color: var(--ink-dim);
+}
+
+/* ---- Map mode ---- */
+
+.map-canvas {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  min-height: 360px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+
+.map-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.map-bg-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  pointer-events: none;
+}
+
+.map-dot {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--crimson-bright);
+  border: 2px solid #fff;
+  transform: translate(-50%, -50%);
+}
+
+.map-dot.is-draggable {
+  cursor: grab;
+}
+
+/* ---- Encounter mode ---- */
+
+.encounter-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+}
+
+.encounter-cell {
+  border: 1px solid rgba(156, 127, 77, 0.35);
+}
+
+.encounter-token {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+.encounter-token.is-draggable {
+  cursor: grab;
+}
+
+.encounter-roster {
+  margin-top: 1rem;
+}
+
+.encounter-roster-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px dashed var(--line);
+  min-height: 80px;
+}
