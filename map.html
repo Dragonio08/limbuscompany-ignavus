@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Map - Limbus Company: Ignavus</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="site-nav">
+    <a class="site-nav-brand display" href="index.html"><span class="accent-yellow">Limbus Company</span>: <span class="accent">Ignavus</span></a>
+    <div id="nav-account" class="site-nav-account"></div>
+  </header>
+
+  <div id="map-page" class="map-page">
+    <p id="map-loading" class="page-note">Loading…</p>
+  </div>
+
+  <!-- ---------- Waiting room ---------- -->
+  <template id="waiting-room-template">
+    <div class="waiting-room">
+      <h1 class="page-title display">Waiting Room</h1>
+      <p class="page-note" id="waiting-note">Waiting for the Dungeon Master…</p>
+
+      <div class="creator-field" id="waiting-char-field">
+        <label for="waiting-char-select">Your Character</label>
+        <select id="waiting-char-select">
+          <option value="" disabled selected>Choose a character</option>
+        </select>
+        <div class="save-row">
+          <button id="waiting-join-btn" class="small-btn" type="button">Join Session</button>
+          <span id="waiting-join-status" class="save-status"></span>
+        </div>
+      </div>
+
+      <h2 class="sheet-section-title display">Who's Here</h2>
+      <div id="waiting-list" class="waiting-list"></div>
+
+      <div id="waiting-dm-controls" class="save-row" style="display: none; justify-content: center; margin-top: 1.4rem;">
+        <button id="waiting-ready-btn" class="auth-submit" type="button" style="width: auto; padding: 0.7rem 2rem;">Ready</button>
+      </div>
+    </div>
+  </template>
+
+  <!-- ---------- Session view ---------- -->
+  <template id="session-template">
+    <div class="session-view">
+      <div id="session-mode-switcher" class="sheet-tabs session-mode-switcher" role="tablist" style="display: none;">
+        <button id="mode-btn-story" class="sheet-tab" type="button">Story</button>
+        <button id="mode-btn-map" class="sheet-tab" type="button">Map</button>
+        <button id="mode-btn-encounter" class="sheet-tab" type="button">Encounter</button>
+      </div>
+      <p id="session-mode-label" class="page-note session-mode-label" style="display: none;"></p>
+
+      <div id="session-dm-end" class="save-row" style="justify-content: center; display: none;">
+        <button id="end-session-btn" class="small-btn" type="button">End Session</button>
+      </div>
+
+      <!-- Story mode -->
+      <div id="mode-story" class="session-stage" style="display: none;">
+        <div id="story-dm-controls" class="save-row story-controls" style="display: none;">
+          <select id="story-npc-select"></select>
+          <button id="story-add-npc-btn" class="small-btn" type="button">+ Add NPC</button>
+          <span id="story-status" class="save-status"></span>
+        </div>
+        <div id="story-canvas" class="story-canvas"></div>
+      </div>
+
+      <!-- Map mode -->
+      <div id="mode-map" class="session-stage" style="display: none;">
+        <div id="map-dm-controls" class="save-row story-controls" style="display: none;">
+          <button id="map-upload-btn" class="small-btn" type="button">Upload Map Image</button>
+          <span id="map-status" class="save-status"></span>
+        </div>
+        <div id="map-canvas" class="map-canvas">
+          <div id="map-layer" class="map-layer"></div>
+        </div>
+      </div>
+
+      <!-- Encounter mode -->
+      <div id="mode-encounter" class="session-stage" style="display: none;">
+        <div id="encounter-dm-controls" class="save-row story-controls" style="display: none;">
+          <button id="encounter-upload-btn" class="small-btn" type="button">Upload Map Image</button>
+          <select id="encounter-npc-select"></select>
+          <button id="encounter-add-npc-btn" class="small-btn" type="button">+ Add NPC</button>
+          <span id="encounter-status" class="save-status"></span>
+        </div>
+        <div id="encounter-canvas" class="map-canvas">
+          <div id="encounter-layer" class="map-layer">
+            <div id="encounter-grid" class="encounter-grid"></div>
+          </div>
+        </div>
+        <div id="encounter-roster" class="encounter-roster"></div>
+      </div>
+    </div>
+  </template>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/map.js"></script>
+</body>
+</html>
