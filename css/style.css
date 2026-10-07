@@ -1908,6 +1908,27 @@ body::before {
   text-align: center;
 }
 
+#waiting-note {
+  text-align: center;
+  margin: 0 auto 1.2rem;
+}
+
+.waiting-char-field select {
+  max-width: 320px;
+  margin: 0 auto;
+  display: block;
+}
+
+.waiting-join-row {
+  justify-content: center;
+}
+
+.waiting-divider {
+  border-top: 1px solid var(--line);
+  margin: 1.8rem auto;
+  max-width: 420px;
+}
+
 .waiting-list {
   display: flex;
   flex-direction: column;
@@ -2004,6 +2025,27 @@ body::before {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 1.3rem;
   color: var(--ink-dim);
+}
+
+.token-popup {
+  position: fixed;
+  transform: translate(-50%, -110%);
+  background: var(--bg-panel);
+  border: 1px solid var(--gold);
+  padding: 0.8rem 1rem;
+  z-index: 2000;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.token-popup-title {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.token-popup .save-row {
+  justify-content: center;
+  margin-top: 0;
 }
 
 /* ---- Map mode ---- */
