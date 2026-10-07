@@ -434,6 +434,8 @@ function buildStoryToken(character, x, y, kind, id) {
   token.className = "story-token";
   token.style.left = `${x}%`;
   token.style.top = `${y}%`;
+  token.dataset.origLeft = x;
+  token.dataset.origTop = y;
 
   token.appendChild(tokenVisual(character));
 
@@ -446,14 +448,30 @@ function buildStoryToken(character, x, y, kind, id) {
     token.classList.add("is-draggable");
     token.style.touchAction = "none";
     token.addEventListener("pointerdown", (event) => {
-      startFreeDrag(event, token, async (xPct, yPct) => {
-        const table = kind === "player" ? "session_players" : "session_npcs";
-        const idColumn = kind === "player" ? "user_id" : "id";
-        await client
-          .from(table)
-          .update({ story_x: xPct, story_y: yPct })
-          .eq(idColumn, id);
-      });
+      startFreeDrag(
+        event,
+        token,
+        async (xPct, yPct) => {
+          const table = kind === "player" ? "session_players" : "session_npcs";
+          const idColumn = kind === "player" ? "user_id" : "id";
+          await client
+            .from(table)
+            .update({ story_x: xPct, story_y: yPct })
+            .eq(idColumn, id);
+        },
+        kind === "npc"
+          ? () => {
+              openTokenPopup(event.clientX, event.clientY, character ? character.name : "NPC", [
+                {
+                  label: "Remove",
+                  onClick: async () => {
+                    await client.from("session_npcs").delete().eq("id", id);
+                  },
+                },
+              ]);
+            }
+          : null
+      );
     });
   }
 
@@ -461,13 +479,21 @@ function buildStoryToken(character, x, y, kind, id) {
 }
 
 // Generic percentage-based free drag within a token's offsetParent.
-// onDrop(xPercent, yPercent) is called once, on release.
-function startFreeDrag(event, el, onDrop) {
+// onDrop(xPercent, yPercent) is called once, on release, if the pointer
+// actually moved past a small threshold. If it didn't move (a plain
+// click/tap), onClick() is called instead and the position is untouched.
+function startFreeDrag(event, el, onDrop, onClick) {
   event.preventDefault();
   const parent = el.offsetParent;
   const parentRect = parent.getBoundingClientRect();
+  const startX = event.clientX;
+  const startY = event.clientY;
+  let moved = false;
 
   function onMove(moveEvent) {
+    if (Math.abs(moveEvent.clientX - startX) > 4 || Math.abs(moveEvent.clientY - startY) > 4) {
+      moved = true;
+    }
     const xPct = ((moveEvent.clientX - parentRect.left) / parentRect.width) * 100;
     const yPct = ((moveEvent.clientY - parentRect.top) / parentRect.height) * 100;
     el.style.left = `${Math.max(0, Math.min(100, xPct))}%`;
@@ -477,6 +503,16 @@ function startFreeDrag(event, el, onDrop) {
   function onUp(upEvent) {
     document.removeEventListener("pointermove", onMove);
     document.removeEventListener("pointerup", onUp);
+
+    if (!moved) {
+      // Snap back visually — renderer will redraw it at its real position
+      // if onClick doesn't change anything.
+      el.style.left = `${el.dataset.origLeft}%`;
+      el.style.top = `${el.dataset.origTop}%`;
+      if (onClick) onClick();
+      return;
+    }
+
     const xPct = ((upEvent.clientX - parentRect.left) / parentRect.width) * 100;
     const yPct = ((upEvent.clientY - parentRect.top) / parentRect.height) * 100;
     onDrop(Math.max(0, Math.min(100, xPct)), Math.max(0, Math.min(100, yPct)));
@@ -484,6 +520,58 @@ function startFreeDrag(event, el, onDrop) {
 
   document.addEventListener("pointermove", onMove);
   document.addEventListener("pointerup", onUp);
+}
+
+// ---- Tiny popup used for "click a token" actions (currently: remove an NPC) ----
+
+function openTokenPopup(x, y, title, buttons) {
+  closeTokenPopup();
+
+  const popup = document.createElement("div");
+  popup.id = "token-popup";
+  popup.className = "token-popup";
+  popup.style.left = `${x}px`;
+  popup.style.top = `${y}px`;
+
+  const titleEl = document.createElement("p");
+  titleEl.className = "token-popup-title display";
+  titleEl.textContent = title;
+  popup.appendChild(titleEl);
+
+  const row = document.createElement("div");
+  row.className = "save-row";
+  buttons.forEach(({ label, onClick }) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "small-btn";
+    btn.textContent = label;
+    btn.addEventListener("click", () => {
+      closeTokenPopup();
+      onClick();
+    });
+    row.appendChild(btn);
+  });
+  popup.appendChild(row);
+
+  document.body.appendChild(popup);
+
+  // Close on an outside click, but not the same click that opened it.
+  setTimeout(() => {
+    document.addEventListener("click", closeTokenPopupOnOutsideClick);
+  }, 0);
+}
+
+function closeTokenPopupOnOutsideClick(event) {
+  const popup = document.getElementById("token-popup");
+  if (popup && !popup.contains(event.target)) {
+    closeTokenPopup();
+  }
+}
+
+function closeTokenPopup() {
+  const popup = document.getElementById("token-popup");
+  if (popup) popup.remove();
+  document.removeEventListener("click", closeTokenPopupOnOutsideClick);
 }
 
 // =====================================================================
@@ -636,17 +724,37 @@ function wireEncounterControls() {
     .getElementById("encounter-upload-btn")
     .addEventListener("click", () => uploadMapImage("encounter-status"));
 
-  loadNpcOptionsInto("encounter-npc-select");
+  loadAllCharacterOptionsInto("encounter-npc-select");
 
   document.getElementById("encounter-add-npc-btn").addEventListener("click", async () => {
     const select = document.getElementById("encounter-npc-select");
     const statusEl = document.getElementById("encounter-status");
     if (!select.value) {
-      statusEl.textContent = "Pick an NPC first.";
+      statusEl.textContent = "Pick a character first.";
       return;
     }
     const { error } = await client.from("session_npcs").insert({ character_id: select.value });
     statusEl.textContent = error ? "Couldn't add: " + error.message : "";
+  });
+}
+
+// Encounter mode can add ANY character as a token (NPCs and player
+// characters alike), not just NPCs — useful for a character whose player
+// isn't in the live session, or for planning ahead.
+async function loadAllCharacterOptionsInto(selectId) {
+  const select = document.getElementById(selectId);
+  select.innerHTML = '<option value="" disabled selected>Choose a character</option>';
+
+  const { data: chars } = await client
+    .from("characters")
+    .select("id, name, is_npc")
+    .order("name", { ascending: true });
+
+  (chars || []).forEach((c) => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.is_npc ? `${c.name} (NPC)` : c.name;
+    select.appendChild(opt);
   });
 }
 
