@@ -23,16 +23,18 @@
       <h1 class="page-title display">Waiting Room</h1>
       <p class="page-note" id="waiting-note">Waiting for the Dungeon Master…</p>
 
-      <div class="creator-field" id="waiting-char-field">
+      <div class="creator-field waiting-char-field" id="waiting-char-field">
         <label for="waiting-char-select">Your Character</label>
         <select id="waiting-char-select">
           <option value="" disabled selected>Choose a character</option>
         </select>
-        <div class="save-row">
+        <div class="save-row waiting-join-row">
           <button id="waiting-join-btn" class="small-btn" type="button">Join Session</button>
           <span id="waiting-join-status" class="save-status"></span>
         </div>
       </div>
+
+      <div class="waiting-divider"></div>
 
       <h2 class="sheet-section-title display">Who's Here</h2>
       <div id="waiting-list" class="waiting-list"></div>
@@ -83,7 +85,7 @@
         <div id="encounter-dm-controls" class="save-row story-controls" style="display: none;">
           <button id="encounter-upload-btn" class="small-btn" type="button">Upload Map Image</button>
           <select id="encounter-npc-select"></select>
-          <button id="encounter-add-npc-btn" class="small-btn" type="button">+ Add NPC</button>
+          <button id="encounter-add-npc-btn" class="small-btn" type="button">+ Add Token</button>
           <span id="encounter-status" class="save-status"></span>
         </div>
         <div id="encounter-canvas" class="map-canvas">
