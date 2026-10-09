@@ -18,7 +18,6 @@ let sessionRow = null;
 // rebuilding (and re-attaching listeners to) the whole page on every
 // realtime update, only on actual mode/status changes.
 let builtStatus = null;
-let builtMode = null;
 
 function showMessage(text) {
   pageEl.innerHTML = "";
@@ -144,7 +143,9 @@ function subscribeRealtime() {
 function render() {
   if (!sessionRow) return;
 
-  const needsRebuild = builtStatus !== sessionRow.status || builtMode !== sessionRow.mode;
+  // Only a status change (waiting <-> active) needs a full rebuild. Switching
+  // mode just swaps which stage is visible, so the DM's open menu survives it.
+  const needsRebuild = builtStatus !== sessionRow.status;
 
   if (needsRebuild) {
     pageEl.innerHTML = "";
@@ -156,8 +157,10 @@ function render() {
       wireSessionView();
     }
     builtStatus = sessionRow.status;
-    builtMode = sessionRow.mode;
   }
+
+  // In a session the stage fills the page, so the page itself must not scroll.
+  document.body.classList.toggle("session-active", sessionRow.status === "active");
 
   if (sessionRow.status === "waiting") {
     renderWaitingList();
@@ -214,6 +217,13 @@ async function renderNavParticipants() {
     }
     wrap.appendChild(bubble);
   });
+
+  // A little "/" separating everyone in the room from your own profile button.
+  const divider = document.createElement("span");
+  divider.className = "nav-session-divider display";
+  divider.textContent = "/";
+  divider.setAttribute("aria-hidden", "true");
+  wrap.appendChild(divider);
 
   const navAccount = document.getElementById("nav-account");
   if (navAccount.firstChild) {
@@ -340,17 +350,35 @@ async function renderWaitingList() {
 // Session view: mode switcher + End Session
 // =====================================================================
 
+let sessionMenuOpen = false;
+
+function setSessionMenuOpen(open) {
+  sessionMenuOpen = open;
+  const menu = document.getElementById("session-menu");
+  const toggle = document.getElementById("session-menu-toggle");
+  if (!menu || !toggle) return;
+  menu.classList.toggle("is-open", open);
+  toggle.classList.toggle("is-open", open);
+  toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  toggle.textContent = open ? "‹ Close" : "☰ Menu";
+}
+
 function wireSessionView() {
-  const switcher = document.getElementById("session-mode-switcher");
   const label = document.getElementById("session-mode-label");
 
   if (viewerIsDm) {
-    switcher.style.display = "flex";
+    const menu = document.getElementById("session-menu");
+    const toggle = document.getElementById("session-menu-toggle");
+    menu.style.display = "flex";
+    toggle.style.display = "block";
+    setSessionMenuOpen(sessionMenuOpen);
+
+    toggle.addEventListener("click", () => setSessionMenuOpen(!sessionMenuOpen));
+
     document.getElementById("mode-btn-story").addEventListener("click", () => setMode("story"));
     document.getElementById("mode-btn-map").addEventListener("click", () => setMode("map"));
     document.getElementById("mode-btn-encounter").addEventListener("click", () => setMode("encounter"));
 
-    document.getElementById("session-dm-end").style.display = "flex";
     document.getElementById("end-session-btn").addEventListener("click", async () => {
       const confirmed = window.confirm("End the session and clear the waiting room?");
       if (!confirmed) return;
@@ -377,6 +405,10 @@ function updateModeVisibility() {
     document.getElementById(`mode-${m}`).style.display = m === sessionRow.mode ? "block" : "none";
     const btn = document.getElementById(`mode-btn-${m}`);
     if (btn) btn.classList.toggle("is-active", m === sessionRow.mode);
+
+    // The tools for a mode live in the pull-out menu, shown only while that mode is active.
+    const tools = document.getElementById(`${m}-dm-controls`);
+    if (tools) tools.style.display = viewerIsDm && m === sessionRow.mode ? "flex" : "none";
   });
   const label = document.getElementById("session-mode-label");
   if (label) label.textContent = `Mode: ${sessionRow.mode.charAt(0).toUpperCase() + sessionRow.mode.slice(1)}`;
@@ -387,7 +419,6 @@ function updateModeVisibility() {
 // =====================================================================
 
 function wireStoryControls() {
-  document.getElementById("story-dm-controls").style.display = viewerIsDm ? "flex" : "none";
   if (!viewerIsDm) return;
 
   loadNpcOptionsInto("story-npc-select");
@@ -602,7 +633,6 @@ function closeTokenPopup() {
 // =====================================================================
 
 function wireMapControls() {
-  document.getElementById("map-dm-controls").style.display = viewerIsDm ? "flex" : "none";
   if (!viewerIsDm) return;
 
   document.getElementById("map-upload-btn").addEventListener("click", () => uploadMapImage("map-status"));
@@ -661,10 +691,12 @@ async function renderMapMode() {
     img.src = sessionRow.map_image;
     img.draggable = false;
     layer.appendChild(img);
+    sizeLayerToImage(layer, img, sessionRow.map_image);
   } else {
+    resetLayerSize(layer);
     const note = document.createElement("p");
-    note.className = "page-note";
-    note.textContent = viewerIsDm ? "Upload a map image above." : "No map loaded yet.";
+    note.className = "page-note map-empty-note";
+    note.textContent = viewerIsDm ? "Open the menu and upload an image." : "No map loaded yet.";
     layer.appendChild(note);
   }
 
@@ -712,6 +744,43 @@ async function renderMapMode() {
   });
 }
 
+// Map and Encounter layers are sized to the image itself. That keeps every
+// percentage-based position (dots, grid tiles, tokens) tied to the picture
+// rather than to whatever size each person's screen happens to be, and lets
+// the grid cover exactly the map. The size is cached per image so the
+// constant re-renders from realtime updates don't make the layer flash.
+const imageSizeCache = { src: null, width: 0, height: 0 };
+
+function sizeLayerToImage(layer, img, src) {
+  const apply = (w, h) => {
+    layer.style.width = `${w}px`;
+    layer.style.height = `${h}px`;
+  };
+
+  if (imageSizeCache.src === src && imageSizeCache.width) {
+    apply(imageSizeCache.width, imageSizeCache.height);
+    return;
+  }
+
+  const onReady = () => {
+    imageSizeCache.src = src;
+    imageSizeCache.width = img.naturalWidth;
+    imageSizeCache.height = img.naturalHeight;
+    apply(img.naturalWidth, img.naturalHeight);
+  };
+
+  if (img.complete && img.naturalWidth) {
+    onReady();
+  } else {
+    img.addEventListener("load", onReady);
+  }
+}
+
+function resetLayerSize(layer) {
+  layer.style.width = "";
+  layer.style.height = "";
+}
+
 function startPanDrag(event, layer, startOffset, onDrop) {
   event.preventDefault();
   const startX = event.clientX;
@@ -740,7 +809,6 @@ function startPanDrag(event, layer, startOffset, onDrop) {
 // =====================================================================
 
 function wireEncounterControls() {
-  document.getElementById("encounter-dm-controls").style.display = viewerIsDm ? "flex" : "none";
   if (!viewerIsDm) return;
 
   document
@@ -787,8 +855,16 @@ async function renderEncounterMode() {
   const roster = document.getElementById("encounter-roster");
   if (!layer || !grid || !roster) return;
 
+  const canvas = document.getElementById("encounter-canvas");
+
   const cols = sessionRow.encounter_cols || 10;
   const rows = sessionRow.encounter_rows || 8;
+
+  // Same shared offset as Map mode, so the picture moves the same way here.
+  const offset = sessionRow.map_offset || { x: 0, y: 0 };
+  layer.style.transform = `translate(${offset.x}px, ${offset.y}px)`;
+
+  roster.style.display = viewerIsDm ? "block" : "none";
 
   layer.querySelectorAll(".map-bg-image, .encounter-token").forEach((el) => el.remove());
 
@@ -798,6 +874,21 @@ async function renderEncounterMode() {
     img.draggable = false;
     img.src = sessionRow.map_image;
     layer.insertBefore(img, grid);
+    sizeLayerToImage(layer, img, sessionRow.map_image);
+  } else {
+    resetLayerSize(layer);
+  }
+
+  // Panning: dragging anywhere that isn't a token moves the whole map + grid.
+  // Tokens stop their own pointerdown from bubbling, so they drag separately.
+  if (viewerIsDm && canvas) {
+    canvas.style.touchAction = "none";
+    canvas.onpointerdown = (event) => {
+      if (event.target.closest(".encounter-token")) return;
+      startPanDrag(event, layer, offset, async (newOffset) => {
+        await client.from("game_session").update({ map_offset: newOffset }).eq("id", 1);
+      });
+    };
   }
 
   grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
