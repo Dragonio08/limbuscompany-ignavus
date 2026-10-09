@@ -116,10 +116,20 @@ function subscribeRealtime() {
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "session_players" },
-      () => {
-        render();
-        renderNavParticipants();
-      }
+      () => render()
+    )
+    // Token positions live in this same table, so UPDATE events fire on
+    // every drag. The navbar bubbles only need rebuilding when someone
+    // actually joins or leaves — doing it on every update made them flicker.
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "session_players" },
+      () => renderNavParticipants()
+    )
+    .on(
+      "postgres_changes",
+      { event: "DELETE", schema: "public", table: "session_players" },
+      () => renderNavParticipants()
     )
     .on(
       "postgres_changes",
@@ -161,18 +171,31 @@ function render() {
 
 // ---- Navbar participant bubbles (session mode only) ----
 
+// getSession/onAuthStateChange/realtime can all trigger this around the
+// same time, and it's async (it queries players+profiles), so overlapping
+// calls can race. This token makes sure only the most recently started
+// call is allowed to touch the DOM, and the removal+insertion happens as
+// one synchronous block right after the await — same pattern as the
+// duplicate avatar/logout bug fixed earlier in navbar.js.
+let navParticipantsToken = 0;
+
 async function renderNavParticipants() {
-  const existing = document.getElementById("nav-session-participants");
-  if (existing) existing.remove();
+  const myToken = ++navParticipantsToken;
 
   const { data: players } = await client
     .from("session_players")
     .select("user_id, character_id");
 
+  const profiles = players && players.length ? await fetchProfilesByIds(players.map((p) => p.user_id)) : new Map();
+  const { data: dmProfiles } = await client.from("profiles").select("id").eq("is_dm", true);
+
+  if (myToken !== navParticipantsToken) return; // a newer call superseded this one
+
+  const existing = document.getElementById("nav-session-participants");
+  if (existing) existing.remove();
+
   if (!players || players.length === 0) return;
 
-  const profiles = await fetchProfilesByIds(players.map((p) => p.user_id));
-  const { data: dmProfiles } = await client.from("profiles").select("id").eq("is_dm", true);
   const dmIds = new Set((dmProfiles || []).map((p) => p.id));
 
   const wrap = document.createElement("div");

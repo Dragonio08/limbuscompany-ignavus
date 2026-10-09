@@ -1,7 +1,11 @@
-// Uses the shared client created in js/supabase-client.js (loaded first).
+// NPC creator: a separate flow from the player character creator.
+// No skills, no Signature Color. Max HP/SP/Speed are chosen directly, the
+// panic type is free-form, the inventory can hold any number of items, and
+// E.G.O is off unless the DM turns it on.
+
 if (!window.client) {
   console.error(
-    "Supabase client is missing. Make sure js/supabase-client.js is loaded before js/character-creator.js."
+    "Supabase client is missing. Make sure js/supabase-client.js is loaded before js/npc-creator.js."
   );
 }
 var client = window.client;
@@ -22,7 +26,7 @@ client.auth.getSession().then(async ({ data }) => {
   }
 });
 
-// ---- Stats point-buy ----
+// ---- Stats: no limit, with a non-blocking warning ----
 
 const DESCRIPTORS = {
   1: "Atrocious",
@@ -34,9 +38,7 @@ const DESCRIPTORS = {
   7: "Godlike",
 };
 
-// NPCs have no point limit on their stats — a DM can build anything.
-// We still track what a player's budget *would* be (7 points, 5 per stat)
-// purely to show a non-blocking warning when an NPC goes beyond that.
+// For the warning only: what a player could normally build.
 const PLAYER_TOTAL_POINTS = 7;
 const PLAYER_STAT_CAP = 5;
 
@@ -50,20 +52,10 @@ const statsWarningEl = document.getElementById("stats-warning");
 function updateStatsWarning() {
   const overStatCap = STAT_NAMES.some((s) => stats[s] > PLAYER_STAT_CAP);
   const overBudget = pointsRemaining < 0;
-  if (!statsWarningEl) return;
-  statsWarningEl.dataset.statWarning =
+  statsWarningEl.textContent =
     overStatCap || overBudget
-      ? "⚠ This exceeds what a player could normally build (max 5 per stat, 7 points total)."
+      ? "⚠ This is more than a player could normally build (max 5 per stat, 7 points total). That's fine for an NPC."
       : "";
-  refreshWarningText();
-}
-
-function refreshWarningText() {
-  if (!statsWarningEl) return;
-  const statWarning = statsWarningEl.dataset.statWarning || "";
-  const skillWarning = statsWarningEl.dataset.skillWarning || "";
-  const combined = [statWarning, skillWarning].filter(Boolean).join(" ");
-  statsWarningEl.textContent = combined ? combined + " That's fine for an NPC." : "";
 }
 
 function updateStatUI(stat) {
@@ -72,16 +64,15 @@ function updateStatUI(stat) {
     DESCRIPTORS[Math.min(stats[stat], 7)];
   pointsRemainingEl.textContent = pointsRemaining;
 
-  document
-    .querySelectorAll(`.stat-btn[data-stat="${stat}"]`)
-    .forEach((btn) => {
-      if (btn.dataset.action === "inc") {
-        btn.disabled = false; // no cap for NPCs
-      } else {
-        btn.disabled = stats[stat] <= 1;
-      }
-    });
+  document.querySelectorAll(`.stat-btn[data-stat="${stat}"]`).forEach((btn) => {
+    if (btn.dataset.action === "dec") {
+      btn.disabled = stats[stat] <= 1;
+    }
+  });
+}
 
+function refreshStats() {
+  STAT_NAMES.forEach(updateStatUI);
   updateStatsWarning();
 }
 
@@ -91,218 +82,74 @@ document.querySelectorAll(".stat-btn").forEach((btn) => {
     if (btn.dataset.action === "inc") {
       stats[stat] += 1;
       pointsRemaining -= 1;
-    } else {
-      if (stats[stat] > 1) {
-        stats[stat] -= 1;
-        pointsRemaining += 1;
-      }
+    } else if (stats[stat] > 1) {
+      stats[stat] -= 1;
+      pointsRemaining += 1;
     }
-    STAT_NAMES.forEach(updateStatUI);
-    renderAllSkills();
+    refreshStats();
   });
 });
 
-STAT_NAMES.forEach(updateStatUI);
+refreshStats();
 
-// ---- Skills (signature / proficient picks) ----
+// ---- E.G.O toggle ----
 
-const DESCRIPTOR_CAP = 7;
-const skillPicks = { signature: null, proficient: [] };
+let egoEnabled = false;
+const egoToggle = document.getElementById("npc-ego-toggle");
 
-function skillValue(archetype, skillKey) {
-  const base = stats[archetype];
-  if (skillPicks.signature === skillKey) return base + 2;
-  if (skillPicks.proficient.includes(skillKey)) return base + 1;
-  return base;
+egoToggle.addEventListener("click", () => {
+  egoEnabled = !egoEnabled;
+  egoToggle.textContent = egoEnabled ? "E.G.O: Enabled" : "E.G.O: Disabled";
+  egoToggle.setAttribute("aria-pressed", egoEnabled ? "true" : "false");
+  egoToggle.classList.toggle("is-on", egoEnabled);
+});
+
+// ---- Inventory builder: any number of items ----
+
+const GRID_SIZE = 6;
+const itemShapeEl = document.getElementById("npc-item-shape");
+const itemTypeEl = document.getElementById("npc-item-type");
+const itemNameEl = document.getElementById("npc-item-name");
+const itemStatusEl = document.getElementById("npc-item-status");
+const itemTileCountEl = document.getElementById("npc-item-tile-count");
+const itemsListEl = document.getElementById("npc-items-list");
+const itemsCountEl = document.getElementById("npc-items-count");
+
+const selectedCells = new Set(); // "r,c" for the item currently being shaped
+const addedItems = []; // { id, name, type, shape (normalized) }
+
+function updateTileCount() {
+  itemTileCountEl.textContent = `Tiles: ${selectedCells.size}`;
 }
 
-function skillDescriptor(value) {
-  return DESCRIPTORS[Math.min(value, DESCRIPTOR_CAP)];
-}
-
-function updateSkillPicksStatus() {
-  const statusEl = document.getElementById("skill-picks-status");
-  const sigLabel = skillPicks.signature
-    ? findSkillByKey(skillPicks.signature).name
-    : "none chosen";
-  statusEl.textContent = `Signature: ${sigLabel} · Proficient: ${skillPicks.proficient.length} chosen`;
-
-  if (statsWarningEl) {
-    statsWarningEl.dataset.skillWarning =
-      skillPicks.proficient.length > 2
-        ? "⚠ More Proficient skills than a player could normally pick (max 2)."
-        : "";
-    refreshWarningText();
-  }
-}
-
-function findSkillByKey(key) {
-  for (const archetype of ARCHETYPES) {
-    const found = SKILLS[archetype].find((s) => s.key === key);
-    if (found) return found;
-  }
-  return null;
-}
-
-function setSignature(skillKey) {
-  skillPicks.proficient = skillPicks.proficient.filter((k) => k !== skillKey);
-  skillPicks.signature = skillPicks.signature === skillKey ? null : skillKey;
-  renderAllSkills();
-}
-
-function toggleProficient(skillKey) {
-  if (skillPicks.signature === skillKey) return;
-  if (skillPicks.proficient.includes(skillKey)) {
-    skillPicks.proficient = skillPicks.proficient.filter((k) => k !== skillKey);
-  } else {
-    // No cap for NPCs — updateSkillPicksStatus() warns instead of blocking.
-    skillPicks.proficient.push(skillKey);
-  }
-  renderAllSkills();
-}
-
-function renderSkillsForArchetype(archetype) {
-  const container = document.getElementById(`skills-list-${archetype}`);
-  container.innerHTML = "";
-
-  SKILLS[archetype].forEach((skill) => {
-    const value = skillValue(archetype, skill.key);
-    const isSignature = skillPicks.signature === skill.key;
-    const isProficient = skillPicks.proficient.includes(skill.key);
-
-    const row = document.createElement("div");
-    row.className = "skill-row";
-
-    const info = document.createElement("div");
-    info.className = "skill-info";
-
-    const nameLine = document.createElement("div");
-    nameLine.className = "skill-name-line";
-
-    const nameSpan = document.createElement("span");
-    nameSpan.textContent = skill.name;
-
-    const valueSpan = document.createElement("span");
-    valueSpan.className = "skill-value";
-    valueSpan.textContent = `${value} · ${skillDescriptor(value)}`;
-
-    nameLine.appendChild(nameSpan);
-    nameLine.appendChild(valueSpan);
-
-    const quoteLine = document.createElement("p");
-    quoteLine.className = "skill-quote";
-    quoteLine.style.color = `var(--stat-${archetype})`;
-    quoteLine.textContent = skill.quote;
-
-    const desc = document.createElement("p");
-    desc.className = "skill-description";
-    desc.textContent = skill.description;
-
-    info.appendChild(nameLine);
-    info.appendChild(quoteLine);
-    info.appendChild(desc);
-
-    const tags = document.createElement("div");
-    tags.className = "skill-tags";
-
-    const sigBtn = document.createElement("button");
-    sigBtn.type = "button";
-    sigBtn.className = "skill-tag-btn" + (isSignature ? " is-signature" : "");
-    sigBtn.textContent = "Signature";
-    sigBtn.disabled = isProficient;
-    sigBtn.addEventListener("click", () => setSignature(skill.key));
-
-    const profBtn = document.createElement("button");
-    profBtn.type = "button";
-    profBtn.className = "skill-tag-btn" + (isProficient ? " is-proficient" : "");
-    profBtn.textContent = "Proficient";
-    profBtn.disabled = isSignature;
-    profBtn.addEventListener("click", () => toggleProficient(skill.key));
-
-    tags.appendChild(sigBtn);
-    tags.appendChild(profBtn);
-
-    row.appendChild(info);
-    row.appendChild(tags);
-    container.appendChild(row);
-  });
-}
-
-// New characters start at level 1, at full HP and SP.
-function updateVitalsPreview() {
-  const weathering = skillValue("fortitude", "weathering");
-  const willToPower = skillValue("temperance", "will_to_power");
-  const adaptability = skillValue("fortitude", "adaptability");
-
-  const maxHp = calcMaxHp(weathering, 1);
-  const maxSp = calcMaxSp(willToPower, 1);
-
-  document.getElementById("vitals-hp-text").textContent = `${maxHp} / ${maxHp}`;
-  document.getElementById("vitals-sp-text").textContent = `${maxSp} / ${maxSp}`;
-  document.getElementById("vitals-speed").textContent = calcSpeed(adaptability);
-}
-
-function renderAllSkills() {
-  ARCHETYPES.forEach(renderSkillsForArchetype);
-  updateSkillPicksStatus();
-  updateVitalsPreview();
-}
-
-renderAllSkills();
-
-// ---- Shape picker grids ----
-
-const MAX_WEAPON_TILES = 3;
-
-// options.maxCells: refuse to select more cells than this.
-// options.onChange: called after every change to the selection.
-function buildShapeGrid(gridEl, selectedSet, options = {}) {
-  for (let r = 0; r < 6; r++) {
-    for (let c = 0; c < 6; c++) {
+function buildShapeGrid() {
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
       const cell = document.createElement("button");
       cell.type = "button";
       cell.className = "shape-cell";
       cell.setAttribute("aria-label", `Row ${r + 1}, column ${c + 1}`);
       cell.addEventListener("click", () => {
         const key = `${r},${c}`;
-        if (selectedSet.has(key)) {
-          selectedSet.delete(key);
+        if (selectedCells.has(key)) {
+          selectedCells.delete(key);
           cell.classList.remove("selected");
         } else {
-          if (options.maxCells && selectedSet.size >= options.maxCells) {
-            if (options.onChange) options.onChange(true);
-            return;
-          }
-          selectedSet.add(key);
+          selectedCells.add(key);
           cell.classList.add("selected");
         }
-        if (options.onChange) options.onChange(false);
+        updateTileCount();
       });
-      gridEl.appendChild(cell);
+      itemShapeEl.appendChild(cell);
     }
   }
 }
 
-const containerSelected = new Set();
-const weaponSelected = new Set();
-
-buildShapeGrid(document.getElementById("container-shape"), containerSelected);
-function updateWeaponTileCount(hitLimit) {
-  const el = document.getElementById("weapon-tile-count");
-  el.textContent =
-    `Tiles: ${weaponSelected.size} / ${MAX_WEAPON_TILES}` +
-    (hitLimit
-      ? ` — a starting weapon can be at most ${MAX_WEAPON_TILES} tiles.`
-      : "");
+function clearShapeSelection() {
+  selectedCells.clear();
+  itemShapeEl.querySelectorAll(".shape-cell.selected").forEach((el) => el.classList.remove("selected"));
+  updateTileCount();
 }
-
-buildShapeGrid(document.getElementById("weapon-shape"), weaponSelected, {
-  maxCells: MAX_WEAPON_TILES,
-  onChange: updateWeaponTileCount,
-});
-updateWeaponTileCount(false);
-
-// ---- Shape helpers ----
 
 function setToCells(set) {
   return Array.from(set).map((key) => key.split(",").map(Number));
@@ -312,19 +159,12 @@ function isConnected(cells) {
   if (cells.length === 0) return false;
   const key = ([r, c]) => `${r},${c}`;
   const set = new Set(cells.map(key));
-  const visited = new Set();
+  const visited = new Set([key(cells[0])]);
   const stack = [cells[0]];
-  visited.add(key(cells[0]));
 
   while (stack.length) {
     const [r, c] = stack.pop();
-    const neighbors = [
-      [r - 1, c],
-      [r + 1, c],
-      [r, c - 1],
-      [r, c + 1],
-    ];
-    for (const n of neighbors) {
+    for (const n of [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]]) {
       const k = key(n);
       if (set.has(k) && !visited.has(k)) {
         visited.add(k);
@@ -342,19 +182,19 @@ function normalizeShape(cells) {
   return cells.map(([r, c]) => [r - minR, c - minC]);
 }
 
-// Greedily packs items (in order) into a 6x6 grid, top-left first fit.
-// Returns the items with an added `origin`, or null if they don't fit.
+// Greedy top-left first-fit packing of any number of items into the grid.
+// Returns the items with an added `origin`, or null if they don't all fit.
 function packItems(items) {
   const occupied = new Set();
   const placed = [];
 
   for (const item of items) {
     let success = false;
-    for (let r0 = 0; r0 < 6 && !success; r0++) {
-      for (let c0 = 0; c0 < 6 && !success; c0++) {
+    for (let r0 = 0; r0 < GRID_SIZE && !success; r0++) {
+      for (let c0 = 0; c0 < GRID_SIZE && !success; c0++) {
         const translated = item.shape.map(([dr, dc]) => [r0 + dr, c0 + dc]);
         const fits = translated.every(
-          ([r, c]) => r >= 0 && r < 6 && c >= 0 && c < 6 && !occupied.has(`${r},${c}`)
+          ([r, c]) => r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE && !occupied.has(`${r},${c}`)
         );
         if (fits) {
           translated.forEach(([r, c]) => occupied.add(`${r},${c}`));
@@ -369,114 +209,107 @@ function packItems(items) {
   return placed;
 }
 
-// ---- Submit ----
+function renderAddedItems() {
+  itemsCountEl.textContent = `(${addedItems.length})`;
+  itemsListEl.innerHTML = "";
 
-// ---- Signature Color availability ----
-
-const colorInput = document.getElementById("char-color");
-const colorStatusEl = document.getElementById("color-status");
-let colorCheckToken = 0;
-let colorIsAvailable = true;
-
-async function checkColorAvailability() {
-  const myToken = ++colorCheckToken;
-  const color = colorInput.value;
-  colorStatusEl.textContent = "Checking…";
-
-  const { data, error } = await client
-    .from("characters")
-    .select("id")
-    .eq("signature_color", color)
-    .limit(1);
-
-  if (myToken !== colorCheckToken) return;
-
-  if (error) {
-    colorStatusEl.textContent = "";
-    colorIsAvailable = true;
+  if (addedItems.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "ego-empty";
+    empty.textContent = "No items yet. An NPC with no items is fine too.";
+    itemsListEl.appendChild(empty);
     return;
   }
 
-  if (data && data.length > 0) {
-    colorStatusEl.textContent = "Taken by another character.";
-    colorStatusEl.classList.add("is-error");
-    colorIsAvailable = false;
-  } else {
-    colorStatusEl.textContent = "Available.";
-    colorStatusEl.classList.remove("is-error");
-    colorIsAvailable = true;
-  }
+  addedItems.forEach((item, index) => {
+    const row = document.createElement("div");
+    row.className = `container-content-chip inventory-item-${item.type}`;
+
+    const label = document.createElement("span");
+    label.textContent = `${item.name} (${item.type}, ${item.shape.length} tiles)`;
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "small-btn";
+    removeBtn.textContent = "Remove";
+    removeBtn.addEventListener("click", () => {
+      addedItems.splice(index, 1);
+      renderAddedItems();
+    });
+
+    row.appendChild(label);
+    row.appendChild(removeBtn);
+    itemsListEl.appendChild(row);
+  });
 }
 
-colorInput.addEventListener("input", () => {
-  colorStatusEl.classList.remove("is-error");
-  colorStatusEl.textContent = "";
+document.getElementById("npc-item-add").addEventListener("click", () => {
+  itemStatusEl.textContent = "";
+
+  const name = itemNameEl.value.trim();
+  const type = itemTypeEl.value;
+  const cells = setToCells(selectedCells);
+
+  if (!name) {
+    itemStatusEl.textContent = "Name the item.";
+    return;
+  }
+  if (cells.length === 0) {
+    itemStatusEl.textContent = "Click cells to shape the item.";
+    return;
+  }
+  if (!isConnected(cells)) {
+    itemStatusEl.textContent = "The shape must be a single connected block.";
+    return;
+  }
+
+  const candidate = { id: crypto.randomUUID(), name, type, shape: normalizeShape(cells) };
+  if (!packItems([...addedItems, candidate])) {
+    itemStatusEl.textContent = "There's no room left in the 6×6 grid for that item.";
+    return;
+  }
+
+  addedItems.push(candidate);
+  itemNameEl.value = "";
+  clearShapeSelection();
+  renderAddedItems();
 });
-colorInput.addEventListener("change", checkColorAvailability);
-checkColorAvailability();
+
+buildShapeGrid();
+updateTileCount();
+renderAddedItems();
+
+// ---- Submit ----
 
 const form = document.getElementById("creator-form");
 const errorEl = document.getElementById("creator-error");
 const submitButton = document.getElementById("creator-submit");
 
+function readPositiveInt(id, fallback, min) {
+  const parsed = parseInt(document.getElementById(id).value, 10);
+  if (Number.isNaN(parsed)) return fallback;
+  return Math.max(min, parsed);
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   errorEl.textContent = "";
 
-  const name = document.getElementById("char-name").value.trim();
-  const quote = document.getElementById("char-quote").value.trim();
-  const district = document.getElementById("char-district").value;
-  const signatureColor = colorInput.value;
-  const containerName = document.getElementById("container-name").value.trim();
-  const weaponName = document.getElementById("weapon-name").value.trim();
-  const story = document.getElementById("char-story").value.trim();
+  const name = document.getElementById("npc-name").value.trim();
+  const quote = document.getElementById("npc-quote").value.trim();
+  const district = document.getElementById("npc-district").value;
+  const story = document.getElementById("npc-story").value.trim();
+  const panicName = document.getElementById("npc-panic-name").value.trim();
+  const panicDescription = document.getElementById("npc-panic-description").value.trim();
 
   if (!name || !district) {
-    errorEl.textContent = "Fill in your name and district.";
+    errorEl.textContent = "Fill in the NPC's name and district.";
     return;
   }
 
-  if (!colorIsAvailable) {
-    errorEl.textContent = "Pick a Signature Color that isn't already taken.";
-    return;
-  }
-
-  if (!containerName || !weaponName) {
-    errorEl.textContent = "Name your Container and your Weapon.";
-    return;
-  }
-
-  const containerCells = setToCells(containerSelected);
-  const weaponCells = setToCells(weaponSelected);
-
-  if (containerCells.length === 0 || weaponCells.length === 0) {
-    errorEl.textContent = "Choose a shape for both your Container and your Weapon.";
-    return;
-  }
-
-  if (weaponCells.length > MAX_WEAPON_TILES) {
-    errorEl.textContent = `Your starting weapon can be at most ${MAX_WEAPON_TILES} tiles.`;
-    return;
-  }
-
-  if (!isConnected(containerCells) || !isConnected(weaponCells)) {
-    errorEl.textContent = "Item shapes must be a single connected block of cells.";
-    return;
-  }
-
-  if (!skillPicks.signature) {
-    errorEl.textContent = "Choose 1 signature skill.";
-    return;
-  }
-
-  const placed = packItems([
-    { type: "container", name: containerName, shape: normalizeShape(containerCells) },
-    { type: "weapon", name: weaponName, shape: normalizeShape(weaponCells) },
-  ]);
-
+  const placed = packItems(addedItems);
   if (!placed) {
-    errorEl.textContent =
-      "Those two items don't both fit in a 6×6 grid. Try smaller shapes.";
+    errorEl.textContent = "The items don't all fit in the 6×6 grid.";
     return;
   }
 
@@ -489,7 +322,7 @@ form.addEventListener("submit", async (event) => {
   }
 
   const inventory = placed.map((item) => ({
-    id: crypto.randomUUID(),
+    id: item.id,
     name: item.name,
     type: item.type,
     cells: item.shape,
@@ -504,25 +337,27 @@ form.addEventListener("submit", async (event) => {
       owner_id: sessionData.session.user.id,
       name,
       district,
+      quote,
       fortitude: stats.fortitude,
       prudence: stats.prudence,
       temperance: stats.temperance,
       justice: stats.justice,
-      skill_picks: skillPicks,
+      skill_picks: {},
       inventory,
       story,
-      quote,
-      signature_color: signatureColor,
       is_npc: true,
+      max_hp: readPositiveInt("npc-max-hp", 100, 1),
+      max_sp: readPositiveInt("npc-max-sp", 10, 1),
+      speed_override: readPositiveInt("npc-speed", 3, 0),
+      custom_panic_name: panicName,
+      custom_panic_description: panicDescription,
+      ego_enabled: egoEnabled,
     })
     .select()
     .single();
 
   if (error) {
-    errorEl.textContent =
-      error.code === "23505"
-        ? "That Signature Color was just taken by another character — pick a different one."
-        : "Could not save character: " + error.message;
+    errorEl.textContent = "Could not save NPC: " + error.message;
     submitButton.disabled = false;
     return;
   }

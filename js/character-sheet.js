@@ -238,6 +238,33 @@ function wireLevelXp() {
     xpStatus.textContent = "Saved.";
     renderLevelXp();
   });
+
+  // Direct level changes (independent of XP). Level never goes below 1.
+  async function changeLevel(delta) {
+    if (!isDm) return;
+    const newLevel = Math.max(1, character.level + delta);
+    if (newLevel === character.level) {
+      xpStatus.textContent = "Level can't go below 1.";
+      return;
+    }
+
+    const { error } = await client
+      .from("characters")
+      .update({ level: newLevel })
+      .eq("id", character.id);
+
+    if (error) {
+      xpStatus.textContent = "Couldn't save: " + error.message;
+      return;
+    }
+
+    character.level = newLevel;
+    xpStatus.textContent = `Level ${newLevel}.`;
+    renderLevelXp();
+  }
+
+  document.getElementById("sheet-level-up").addEventListener("click", () => changeLevel(1));
+  document.getElementById("sheet-level-down").addEventListener("click", () => changeLevel(-1));
 }
 
 // ---- Classification ----
@@ -305,12 +332,19 @@ function skillDescriptorCapped(value) {
 }
 
 function renderStats() {
+  // NPCs from the NPC creator have no skill picks, so no skill breakdown.
+  const hasSkills = !(character.is_npc && !(character.skill_picks && character.skill_picks.signature));
+
   ARCHETYPES.forEach((archetype) => {
     const value = character[archetype];
     document.getElementById(`sheet-stat-${archetype}`).textContent = value;
     document.getElementById(`sheet-descriptor-${archetype}`).textContent =
-      DESCRIPTORS[value];
-    renderSkillsReadOnly(archetype, value);
+      DESCRIPTORS[Math.min(value, 7)];
+    if (hasSkills) {
+      renderSkillsReadOnly(archetype, value);
+    } else {
+      document.getElementById(`sheet-skills-${archetype}`).innerHTML = "";
+    }
   });
 }
 
@@ -1017,6 +1051,11 @@ function wireTabs() {
     },
   };
 
+  // NPCs only get an E.G.O section if the DM enabled it at creation.
+  if (character.is_npc && character.ego_enabled === false) {
+    tabs.ego.btn.style.display = "none";
+  }
+
   function showTab(name) {
     Object.entries(tabs).forEach(([key, { btn, panel }]) => {
       const active = key === name;
@@ -1246,7 +1285,25 @@ function characterSkillValue(archetype, skillKey) {
   return base;
 }
 
+// NPCs made with the NPC creator have Max HP/SP/Speed chosen directly.
+// Everyone else (players, and older NPCs without those values) uses the
+// skill-based formulas.
+function hasDirectVitals() {
+  return character.is_npc && character.max_hp !== null && character.max_hp !== undefined;
+}
+
 function getVitals() {
+  if (hasDirectVitals()) {
+    return {
+      maxHp: character.max_hp,
+      maxSp: character.max_sp !== null && character.max_sp !== undefined ? character.max_sp : 10,
+      speed:
+        character.speed_override !== null && character.speed_override !== undefined
+          ? character.speed_override
+          : 3,
+    };
+  }
+
   const weathering = characterSkillValue("fortitude", "weathering");
   const willToPower = characterSkillValue("temperance", "will_to_power");
   const adaptability = characterSkillValue("fortitude", "adaptability");
@@ -1325,6 +1382,14 @@ function wireVitals() {
 function renderPanicType() {
   const nameEl = document.getElementById("panic-name");
   const descEl = document.getElementById("panic-description");
+
+  // NPCs can have a fully custom, free-form panic type.
+  if (character.is_npc && (character.custom_panic_name || character.custom_panic_description)) {
+    nameEl.textContent = character.custom_panic_name || "Unnamed Panic";
+    nameEl.style.color = "";
+    descEl.textContent = character.custom_panic_description || "";
+    return;
+  }
 
   const signature = (character.skill_picks || {}).signature;
   const archetype = signature ? archetypeOfSkill(signature) : null;
