@@ -488,8 +488,6 @@ function buildStoryToken(character, x, y, kind, id) {
   token.className = "story-token";
   token.style.left = `${x}%`;
   token.style.top = `${y}%`;
-  token.dataset.origLeft = x;
-  token.dataset.origTop = y;
 
   token.appendChild(tokenVisual(character));
 
@@ -536,44 +534,93 @@ function buildStoryToken(character, x, y, kind, id) {
 // onDrop(xPercent, yPercent) is called once, on release, if the pointer
 // actually moved past a small threshold. If it didn't move (a plain
 // click/tap), onClick() is called instead and the position is untouched.
+//
+// The element keeps following the exact spot it was grabbed at (instead of
+// re-centring itself on the pointer, which made it jump), and its position
+// is applied at most once per animation frame so fast drags stay smooth.
 function startFreeDrag(event, el, onDrop, onClick) {
   event.preventDefault();
+
   const parent = el.offsetParent;
-  const parentRect = parent.getBoundingClientRect();
   const startX = event.clientX;
   const startY = event.clientY;
+  const origLeft = el.style.left;
+  const origTop = el.style.top;
+
+  // Where inside the element it was grabbed, relative to its centre
+  // (tokens are positioned by their centre via translate(-50%, -50%)).
+  const startRect = el.getBoundingClientRect();
+  const grabDX = startX - (startRect.left + startRect.width / 2);
+  const grabDY = startY - (startRect.top + startRect.height / 2);
+
   let moved = false;
+  let latest = { x: startX, y: startY };
+  let rafId = null;
+
+  const clamp = (n) => Math.max(0, Math.min(100, n));
+
+  function percentAt(clientX, clientY) {
+    const rect = parent.getBoundingClientRect();
+    return {
+      x: clamp(((clientX - grabDX - rect.left) / rect.width) * 100),
+      y: clamp(((clientY - grabDY - rect.top) / rect.height) * 100),
+    };
+  }
+
+  function applyFrame() {
+    rafId = null;
+    const p = percentAt(latest.x, latest.y);
+    el.style.left = `${p.x}%`;
+    el.style.top = `${p.y}%`;
+  }
+
+  function stop() {
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    document.removeEventListener("pointercancel", onCancel);
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  }
 
   function onMove(moveEvent) {
-    if (Math.abs(moveEvent.clientX - startX) > 4 || Math.abs(moveEvent.clientY - startY) > 4) {
+    latest = { x: moveEvent.clientX, y: moveEvent.clientY };
+
+    if (!moved) {
+      if (Math.abs(latest.x - startX) <= 4 && Math.abs(latest.y - startY) <= 4) return;
       moved = true;
+      el.classList.add("is-dragging");
     }
-    const xPct = ((moveEvent.clientX - parentRect.left) / parentRect.width) * 100;
-    const yPct = ((moveEvent.clientY - parentRect.top) / parentRect.height) * 100;
-    el.style.left = `${Math.max(0, Math.min(100, xPct))}%`;
-    el.style.top = `${Math.max(0, Math.min(100, yPct))}%`;
+
+    if (rafId === null) rafId = requestAnimationFrame(applyFrame);
   }
 
   function onUp(upEvent) {
-    document.removeEventListener("pointermove", onMove);
-    document.removeEventListener("pointerup", onUp);
+    stop();
 
     if (!moved) {
-      // Snap back visually — renderer will redraw it at its real position
-      // if onClick doesn't change anything.
-      el.style.left = `${el.dataset.origLeft}%`;
-      el.style.top = `${el.dataset.origTop}%`;
       if (onClick) onClick();
       return;
     }
 
-    const xPct = ((upEvent.clientX - parentRect.left) / parentRect.width) * 100;
-    const yPct = ((upEvent.clientY - parentRect.top) / parentRect.height) * 100;
-    onDrop(Math.max(0, Math.min(100, xPct)), Math.max(0, Math.min(100, yPct)));
+    const p = percentAt(upEvent.clientX, upEvent.clientY);
+    el.style.left = `${p.x}%`;
+    el.style.top = `${p.y}%`;
+    onDrop(p.x, p.y);
+    el.classList.remove("is-dragging");
+  }
+
+  function onCancel() {
+    stop();
+    el.style.left = origLeft;
+    el.style.top = origTop;
+    el.classList.remove("is-dragging");
   }
 
   document.addEventListener("pointermove", onMove);
   document.addEventListener("pointerup", onUp);
+  document.addEventListener("pointercancel", onCancel);
 }
 
 // ---- Tiny popup used for "click a token" actions (currently: remove an NPC) ----
@@ -676,72 +723,199 @@ function uploadMapImage(statusElId) {
   input.click();
 }
 
+// Map mode is updated in place: the image stays the same element, and each
+// dot is created once and then just moved. Nothing is ever cleared and
+// rebuilt, which is what used to make everything flicker on every update.
+// Data is fetched BEFORE touching the DOM, so there's no blank moment either.
+const mapState = {
+  layer: null,
+  img: null,
+  imgSrc: null,
+  note: null,
+  dots: new Map(), // user_id -> dot element
+  pendingDots: new Map(), // user_id -> {x, y} dropped locally, not yet echoed back
+};
+let mapRenderToken = 0;
+
+// Character rows barely change mid-session, so keep them instead of
+// re-querying on every single update.
+const characterCache = new Map();
+
+async function fetchCharactersCached(ids) {
+  const unique = [...new Set(ids.filter(Boolean))];
+  const missing = unique.filter((id) => !characterCache.has(id));
+  if (missing.length > 0) {
+    const fetched = await fetchCharactersByIds(missing);
+    fetched.forEach((character, id) => characterCache.set(id, character));
+  }
+  const result = new Map();
+  unique.forEach((id) => {
+    if (characterCache.has(id)) result.set(id, characterCache.get(id));
+  });
+  return result;
+}
+
+function resetMapState(layer) {
+  mapState.layer = layer;
+  mapState.img = null;
+  mapState.imgSrc = null;
+  mapState.note = null;
+  mapState.dots = new Map();
+  mapState.pendingDots = new Map();
+}
+
+function currentMapOffset() {
+  return sessionRow.map_offset || { x: 0, y: 0 };
+}
+
+// Remember the new offset locally right away, so a render that happens
+// before the database echo arrives doesn't snap the map back.
+async function commitMapOffset(newOffset) {
+  sessionRow = { ...sessionRow, map_offset: newOffset };
+  await client.from("game_session").update({ map_offset: newOffset }).eq("id", 1);
+}
+
+const snappedLayers = new WeakSet();
+
+function applyLayerOffset(layer) {
+  if (layer.classList.contains("is-panning")) return; // being dragged right now
+  const offset = currentMapOffset();
+  const value = `translate(${offset.x}px, ${offset.y}px)`;
+
+  // The very first placement should just appear in position, not slide in.
+  if (!snappedLayers.has(layer)) {
+    snappedLayers.add(layer);
+    layer.style.transition = "none";
+    layer.style.transform = value;
+    void layer.offsetWidth;
+    layer.style.transition = "";
+    return;
+  }
+
+  layer.style.transform = value;
+}
+
+function syncMapImage(layer) {
+  const src = sessionRow.map_image;
+
+  if (src) {
+    if (mapState.note) {
+      mapState.note.remove();
+      mapState.note = null;
+    }
+    if (!mapState.img || mapState.imgSrc !== src) {
+      if (mapState.img) mapState.img.remove();
+      const img = document.createElement("img");
+      img.className = "map-bg-image";
+      img.draggable = false;
+      img.src = src;
+      layer.insertBefore(img, layer.firstChild);
+      mapState.img = img;
+      mapState.imgSrc = src;
+      sizeLayerToImage(layer, img, src);
+    }
+    return;
+  }
+
+  if (mapState.img) {
+    mapState.img.remove();
+    mapState.img = null;
+    mapState.imgSrc = null;
+  }
+  resetLayerSize(layer);
+  if (!mapState.note) {
+    mapState.note = document.createElement("p");
+    mapState.note.className = "page-note map-empty-note";
+    layer.insertBefore(mapState.note, layer.firstChild);
+  }
+  mapState.note.textContent = viewerIsDm
+    ? "Open the menu and upload an image."
+    : "No map loaded yet.";
+}
+
+function createMapDot(userId) {
+  const dot = document.createElement("div");
+  dot.className = "map-dot";
+
+  if (viewerIsDm) {
+    dot.classList.add("is-draggable");
+    dot.style.touchAction = "none";
+    dot.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+      startFreeDrag(event, dot, async (xPct, yPct) => {
+        mapState.pendingDots.set(userId, { x: xPct, y: yPct });
+        await client
+          .from("session_players")
+          .update({ map_x: xPct, map_y: yPct })
+          .eq("user_id", userId);
+        mapState.pendingDots.delete(userId);
+      });
+    });
+  }
+
+  return dot;
+}
+
+function syncMapDots(layer, players, characters) {
+  const wanted = new Set();
+
+  (players || []).forEach((p) => {
+    if (!p.character_id) return;
+    wanted.add(p.user_id);
+
+    const character = characters.get(p.character_id);
+    let dot = mapState.dots.get(p.user_id);
+    if (!dot) {
+      dot = createMapDot(p.user_id);
+      mapState.dots.set(p.user_id, dot);
+      layer.appendChild(dot);
+    }
+
+    dot.title = character ? character.name : "?";
+    dot.style.background = character && character.signature_color ? character.signature_color : "";
+
+    // Never move a dot out from under the pointer while it's being dragged.
+    if (!dot.classList.contains("is-dragging")) {
+      const pending = mapState.pendingDots.get(p.user_id);
+      dot.style.left = `${pending ? pending.x : p.map_x}%`;
+      dot.style.top = `${pending ? pending.y : p.map_y}%`;
+    }
+  });
+
+  mapState.dots.forEach((dot, userId) => {
+    if (!wanted.has(userId)) {
+      dot.remove();
+      mapState.dots.delete(userId);
+    }
+  });
+}
+
 async function renderMapMode() {
   const canvas = document.getElementById("map-canvas");
   const layer = document.getElementById("map-layer");
   if (!canvas || !layer) return;
 
-  layer.innerHTML = "";
-  const offset = sessionRow.map_offset || { x: 0, y: 0 };
-  layer.style.transform = `translate(${offset.x}px, ${offset.y}px)`;
+  const myToken = ++mapRenderToken;
 
-  if (sessionRow.map_image) {
-    const img = document.createElement("img");
-    img.className = "map-bg-image";
-    img.src = sessionRow.map_image;
-    img.draggable = false;
-    layer.appendChild(img);
-    sizeLayerToImage(layer, img, sessionRow.map_image);
-  } else {
-    resetLayerSize(layer);
-    const note = document.createElement("p");
-    note.className = "page-note map-empty-note";
-    note.textContent = viewerIsDm ? "Open the menu and upload an image." : "No map loaded yet.";
-    layer.appendChild(note);
-  }
+  const { data: players } = await client.from("session_players").select("*");
+  const characters = await fetchCharactersCached((players || []).map((p) => p.character_id));
+
+  if (myToken !== mapRenderToken) return; // a newer render superseded this one
+
+  if (mapState.layer !== layer) resetMapState(layer);
+
+  applyLayerOffset(layer);
+  syncMapImage(layer);
+  syncMapDots(layer, players, characters);
 
   // Panning: dragging empty canvas space moves the whole layer.
   if (viewerIsDm) {
     canvas.style.touchAction = "none";
     canvas.onpointerdown = (event) => {
       if (event.target.closest(".map-dot")) return; // dots handle their own drag
-      startPanDrag(event, layer, offset, async (newOffset) => {
-        await client.from("game_session").update({ map_offset: newOffset }).eq("id", 1);
-      });
+      startPanDrag(event, layer, currentMapOffset(), commitMapOffset);
     };
   }
-
-  const { data: players } = await client.from("session_players").select("*");
-  const characters = await fetchCharactersByIds((players || []).map((p) => p.character_id));
-
-  (players || []).forEach((p) => {
-    if (!p.character_id) return;
-    const character = characters.get(p.character_id);
-    const dot = document.createElement("div");
-    dot.className = "map-dot";
-    dot.style.left = `${p.map_x}%`;
-    dot.style.top = `${p.map_y}%`;
-    dot.title = character ? character.name : "?";
-    if (character && character.signature_color) {
-      dot.style.background = character.signature_color;
-    }
-
-    if (viewerIsDm) {
-      dot.classList.add("is-draggable");
-      dot.style.touchAction = "none";
-      dot.addEventListener("pointerdown", (event) => {
-        event.stopPropagation();
-        startFreeDrag(event, dot, async (xPct, yPct) => {
-          await client
-            .from("session_players")
-            .update({ map_x: xPct, map_y: yPct })
-            .eq("user_id", p.user_id);
-        });
-      });
-    }
-
-    layer.appendChild(dot);
-  });
 }
 
 // Map and Encounter layers are sized to the image itself. That keeps every
@@ -786,22 +960,52 @@ function startPanDrag(event, layer, startOffset, onDrop) {
   const startX = event.clientX;
   const startY = event.clientY;
   let latest = startOffset;
+  let moved = false;
+  let rafId = null;
+
+  layer.classList.add("is-panning");
+
+  function applyFrame() {
+    rafId = null;
+    layer.style.transform = `translate(${latest.x}px, ${latest.y}px)`;
+  }
+
+  function finish() {
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    document.removeEventListener("pointercancel", onCancel);
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    layer.style.transform = `translate(${latest.x}px, ${latest.y}px)`;
+    void layer.offsetWidth; // make sure the final position lands before transitions come back
+    layer.classList.remove("is-panning");
+  }
 
   function onMove(moveEvent) {
     const dx = moveEvent.clientX - startX;
     const dy = moveEvent.clientY - startY;
+    if (!moved && Math.abs(dx) <= 3 && Math.abs(dy) <= 3) return;
+    moved = true;
     latest = { x: startOffset.x + dx, y: startOffset.y + dy };
-    layer.style.transform = `translate(${latest.x}px, ${latest.y}px)`;
+    if (rafId === null) rafId = requestAnimationFrame(applyFrame);
   }
 
   function onUp() {
-    document.removeEventListener("pointermove", onMove);
-    document.removeEventListener("pointerup", onUp);
-    onDrop(latest);
+    finish();
+    if (moved) onDrop(latest);
+  }
+
+  function onCancel() {
+    latest = startOffset;
+    moved = false;
+    finish();
   }
 
   document.addEventListener("pointermove", onMove);
   document.addEventListener("pointerup", onUp);
+  document.addEventListener("pointercancel", onCancel);
 }
 
 // =====================================================================
@@ -861,8 +1065,7 @@ async function renderEncounterMode() {
   const rows = sessionRow.encounter_rows || 8;
 
   // Same shared offset as Map mode, so the picture moves the same way here.
-  const offset = sessionRow.map_offset || { x: 0, y: 0 };
-  layer.style.transform = `translate(${offset.x}px, ${offset.y}px)`;
+  applyLayerOffset(layer);
 
   roster.style.display = viewerIsDm ? "block" : "none";
 
@@ -885,9 +1088,7 @@ async function renderEncounterMode() {
     canvas.style.touchAction = "none";
     canvas.onpointerdown = (event) => {
       if (event.target.closest(".encounter-token")) return;
-      startPanDrag(event, layer, offset, async (newOffset) => {
-        await client.from("game_session").update({ map_offset: newOffset }).eq("id", 1);
-      });
+      startPanDrag(event, layer, currentMapOffset(), commitMapOffset);
     };
   }
 
