@@ -19,18 +19,18 @@
     <form id="creator-form" class="creator-form">
 
       <div class="creator-field">
-        <label for="char-name">Name</label>
-        <input id="char-name" type="text" maxlength="60" required>
+        <label for="npc-name">Name</label>
+        <input id="npc-name" type="text" maxlength="60" required>
       </div>
 
       <div class="creator-field">
-        <label for="char-quote">Quote</label>
-        <input id="char-quote" type="text" maxlength="140" placeholder="e.g: &quot;Today I killed Mother. Or maybe it was yesterday.&quot;">
+        <label for="npc-quote">Quote</label>
+        <input id="npc-quote" type="text" maxlength="140" placeholder="e.g: &quot;Today I killed Mother. Or maybe it was yesterday.&quot;">
       </div>
 
       <div class="creator-field">
-        <label for="char-district">Birth District</label>
-        <select id="char-district" required>
+        <label for="npc-district">Birth District</label>
+        <select id="npc-district" required>
           <option value="" disabled selected>Choose a district</option>
           <option>A Corp.</option>
           <option>B Corp.</option>
@@ -62,43 +62,13 @@
         </select>
       </div>
 
-      <div class="creator-field">
-        <label for="char-color">Signature Color</label>
-        <div class="color-picker-row">
-          <input id="char-color" type="color" value="#8a1a1a">
-          <span id="color-status" class="save-status"></span>
-        </div>
-        <p class="creator-note">Pick a color just for this character — no two characters can share the same one.</p>
-      </div>
-
       <div class="creator-section">
         <h2 class="creator-section-title display">
           Stats
           <span class="points-remaining">Points remaining: <span id="points-remaining">7</span></span>
-          <p id="stats-warning" class="creator-warning"></p>
         </h2>
-        <p class="creator-note">Pick 1 signature skill (+2) and 2 proficient skills (+1) across all your skills below. Hover a skill's name for its subtitle.</p>
-        <p class="points-remaining" id="skill-picks-status">Signature: none chosen · Proficient: 0/2 chosen</p>
-
-        <div class="vitals creator-vitals">
-          <div class="vitals-bars">
-            <div class="vital-row">
-              <span class="vital-label display">HP</span>
-              <div class="vital-bar-track"><div class="vital-bar-fill vital-hp" style="width: 100%;"></div></div>
-              <span id="vitals-hp-text" class="vital-text"></span>
-            </div>
-            <div class="vital-row">
-              <span class="vital-label display">SP</span>
-              <div class="vital-bar-track"><div class="vital-bar-fill vital-sp" style="width: 100%;"></div></div>
-              <span id="vitals-sp-text" class="vital-text"></span>
-            </div>
-          </div>
-          <div class="speed-box" title="Tiles you can move in any direction">
-            <span class="speed-label display">Speed</span>
-            <span id="vitals-speed" class="speed-value">1</span>
-            <span class="speed-unit">tiles, any direction</span>
-          </div>
-        </div>
+        <p class="creator-note">NPCs have no stat limit. You'll just get a warning if you go past what a player could build. NPCs have no skills, only these four stats.</p>
+        <p id="stats-warning" class="creator-warning"></p>
 
         <div class="stat-card">
           <div class="stat-row" data-stat="fortitude" style="--stat-color: var(--stat-fortitude);">
@@ -108,7 +78,6 @@
             <button type="button" class="stat-btn" data-stat="fortitude" data-action="inc">+</button>
             <span class="stat-descriptor" id="stat-descriptor-fortitude">Atrocious</span>
           </div>
-          <div class="skills-list" id="skills-list-fortitude"></div>
         </div>
 
         <div class="stat-card">
@@ -119,7 +88,6 @@
             <button type="button" class="stat-btn" data-stat="prudence" data-action="inc">+</button>
             <span class="stat-descriptor" id="stat-descriptor-prudence">Atrocious</span>
           </div>
-          <div class="skills-list" id="skills-list-prudence"></div>
         </div>
 
         <div class="stat-card">
@@ -130,7 +98,6 @@
             <button type="button" class="stat-btn" data-stat="temperance" data-action="inc">+</button>
             <span class="stat-descriptor" id="stat-descriptor-temperance">Atrocious</span>
           </div>
-          <div class="skills-list" id="skills-list-temperance"></div>
         </div>
 
         <div class="stat-card">
@@ -141,36 +108,82 @@
             <button type="button" class="stat-btn" data-stat="justice" data-action="inc">+</button>
             <span class="stat-descriptor" id="stat-descriptor-justice">Atrocious</span>
           </div>
-          <div class="skills-list" id="skills-list-justice"></div>
+        </div>
+
+      </div>
+
+      <div class="creator-section">
+        <h2 class="creator-section-title display">Vitals</h2>
+        <p class="creator-note">Chosen directly instead of being calculated from skills.</p>
+        <div class="npc-vitals-grid">
+          <div class="creator-field">
+            <label for="npc-max-hp">Max HP</label>
+            <input id="npc-max-hp" type="number" min="1" step="1" value="100">
+          </div>
+          <div class="creator-field">
+            <label for="npc-max-sp">Max SP</label>
+            <input id="npc-max-sp" type="number" min="1" step="1" value="10">
+          </div>
+          <div class="creator-field">
+            <label for="npc-speed">Speed</label>
+            <input id="npc-speed" type="number" min="0" step="1" value="3">
+          </div>
         </div>
       </div>
 
       <div class="creator-section">
-        <h2 class="creator-section-title display">Starting Items</h2>
-        <p class="creator-note">Every Innocence starts with one Container (for their Money and belongings) and one Weapon. Click cells to set each item's shape in the 6×6 grid. The shapes must be a single connected block. Bigger shapes equate to more utilities in your tools.</p>
+        <h2 class="creator-section-title display">Panic Type</h2>
+        <p class="creator-note">Write whatever you want, it isn't tied to any stat or skill.</p>
+        <div class="creator-field">
+          <label for="npc-panic-name">Name</label>
+          <input id="npc-panic-name" type="text" maxlength="40" placeholder="e.g. Frenzy">
+        </div>
+        <div class="creator-field">
+          <label for="npc-panic-description">Description</label>
+          <textarea id="npc-panic-description" class="sheet-textarea item-description-textarea" placeholder="What happens when this NPC's SP hits 0?"></textarea>
+        </div>
+      </div>
 
-        <div class="item-builder">
-          <label for="container-name">Container Name</label>
-          <input id="container-name" class="item-name-input" type="text" maxlength="40" placeholder="e.g. Coat Pocket" required>
-          <div id="container-shape" class="shape-grid"></div>
+      <div class="creator-section">
+        <h2 class="creator-section-title display">E.G.O</h2>
+        <p class="creator-note">NPCs don't have an E.G.O section unless you enable it here.</p>
+        <div class="save-row">
+          <button id="npc-ego-toggle" class="small-btn" type="button" aria-pressed="false">E.G.O: Disabled</button>
+        </div>
+      </div>
+
+      <div class="creator-section">
+        <h2 class="creator-section-title display">Inventory</h2>
+        <p class="creator-note">Add as many items as you like. Click cells to set each item's shape in the 6×6 grid (a single connected block). Items are placed automatically.</p>
+
+        <div class="npc-item-builder">
+          <div class="npc-item-builder-row">
+            <select id="npc-item-type" aria-label="Item type">
+              <option value="weapon">Weapon</option>
+              <option value="container">Container</option>
+            </select>
+            <input id="npc-item-name" type="text" maxlength="40" placeholder="Item name">
+          </div>
+          <div id="npc-item-shape" class="shape-grid"></div>
+          <p id="npc-item-tile-count" class="creator-note"></p>
+          <div class="save-row">
+            <button id="npc-item-add" class="small-btn" type="button">+ Add Item</button>
+            <span id="npc-item-status" class="save-status"></span>
+          </div>
         </div>
 
-        <div class="item-builder">
-          <label for="weapon-name">Weapon Name</label>
-          <input id="weapon-name" class="item-name-input" type="text" maxlength="40" placeholder="e.g. Small Knife" required>
-          <div id="weapon-shape" class="shape-grid"></div>
-          <p id="weapon-tile-count" class="creator-note"></p>
-        </div>
+        <p class="skill-attr-title display">Items added <span id="npc-items-count"></span></p>
+        <div id="npc-items-list" class="npc-items-list"></div>
       </div>
 
       <div class="creator-section">
         <h2 class="creator-section-title display">Story</h2>
-        <textarea id="char-story" class="sheet-textarea" placeholder="Backstory, virtues, flaws..."></textarea>
+        <textarea id="npc-story" class="sheet-textarea" placeholder="Backstory, virtues, flaws..."></textarea>
       </div>
 
       <p id="creator-error" class="auth-message is-error"></p>
 
-      <button type="submit" id="creator-submit" class="auth-submit creator-submit">Create Character</button>
+      <button type="submit" id="creator-submit" class="auth-submit creator-submit">Create NPC</button>
     </form>
   </div>
 
@@ -178,7 +191,6 @@
   <script src="js/supabase-config.js"></script>
   <script src="js/supabase-client.js"></script>
   <script src="js/navbar.js"></script>
-  <script src="js/skills-data.js"></script>
   <script src="js/npc-creator.js"></script>
 </body>
 </html>
