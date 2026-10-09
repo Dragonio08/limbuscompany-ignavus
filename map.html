@@ -48,46 +48,19 @@
   <!-- ---------- Session view ---------- -->
   <template id="session-template">
     <div class="session-view">
-      <div id="session-mode-switcher" class="sheet-tabs session-mode-switcher" role="tablist" style="display: none;">
-        <button id="mode-btn-story" class="sheet-tab" type="button">Story</button>
-        <button id="mode-btn-map" class="sheet-tab" type="button">Map</button>
-        <button id="mode-btn-encounter" class="sheet-tab" type="button">Encounter</button>
-      </div>
-      <p id="session-mode-label" class="page-note session-mode-label" style="display: none;"></p>
 
-      <div id="session-dm-end" class="save-row" style="justify-content: center; display: none;">
-        <button id="end-session-btn" class="small-btn" type="button">End Session</button>
-      </div>
-
-      <!-- Story mode -->
+      <!-- Stages fill the whole page below the navbar -->
       <div id="mode-story" class="session-stage" style="display: none;">
-        <div id="story-dm-controls" class="save-row story-controls" style="display: none;">
-          <select id="story-npc-select"></select>
-          <button id="story-add-npc-btn" class="small-btn" type="button">+ Add NPC</button>
-          <span id="story-status" class="save-status"></span>
-        </div>
         <div id="story-canvas" class="story-canvas"></div>
       </div>
 
-      <!-- Map mode -->
       <div id="mode-map" class="session-stage" style="display: none;">
-        <div id="map-dm-controls" class="save-row story-controls" style="display: none;">
-          <button id="map-upload-btn" class="small-btn" type="button">Upload Map Image</button>
-          <span id="map-status" class="save-status"></span>
-        </div>
         <div id="map-canvas" class="map-canvas">
           <div id="map-layer" class="map-layer"></div>
         </div>
       </div>
 
-      <!-- Encounter mode -->
       <div id="mode-encounter" class="session-stage" style="display: none;">
-        <div id="encounter-dm-controls" class="save-row story-controls" style="display: none;">
-          <button id="encounter-upload-btn" class="small-btn" type="button">Upload Map Image</button>
-          <select id="encounter-npc-select"></select>
-          <button id="encounter-add-npc-btn" class="small-btn" type="button">+ Add Token</button>
-          <span id="encounter-status" class="save-status"></span>
-        </div>
         <div id="encounter-canvas" class="map-canvas">
           <div id="encounter-layer" class="map-layer">
             <div id="encounter-grid" class="encounter-grid"></div>
@@ -95,6 +68,44 @@
         </div>
         <div id="encounter-roster" class="encounter-roster"></div>
       </div>
+
+      <!-- Players just see which mode is active -->
+      <p id="session-mode-label" class="session-mode-badge" style="display: none;"></p>
+
+      <!-- DM pull-out menu -->
+      <button id="session-menu-toggle" class="session-menu-toggle display" type="button" aria-expanded="false" style="display: none;">☰ Menu</button>
+      <aside id="session-menu" class="session-menu" style="display: none;">
+        <p class="session-menu-heading display">Mode</p>
+        <div id="session-mode-switcher" class="session-menu-modes">
+          <button id="mode-btn-story" class="sheet-tab" type="button">Story</button>
+          <button id="mode-btn-map" class="sheet-tab" type="button">Map</button>
+          <button id="mode-btn-encounter" class="sheet-tab" type="button">Encounter</button>
+        </div>
+
+        <p class="session-menu-heading display">Tools</p>
+
+        <div id="story-dm-controls" class="session-menu-tools" style="display: none;">
+          <select id="story-npc-select"></select>
+          <button id="story-add-npc-btn" class="small-btn" type="button">+ Add NPC</button>
+          <span id="story-status" class="save-status"></span>
+        </div>
+
+        <div id="map-dm-controls" class="session-menu-tools" style="display: none;">
+          <button id="map-upload-btn" class="small-btn" type="button">Upload Image</button>
+          <span id="map-status" class="save-status"></span>
+        </div>
+
+        <div id="encounter-dm-controls" class="session-menu-tools" style="display: none;">
+          <button id="encounter-upload-btn" class="small-btn" type="button">Upload Image</button>
+          <select id="encounter-npc-select"></select>
+          <button id="encounter-add-npc-btn" class="small-btn" type="button">+ Add Token</button>
+          <span id="encounter-status" class="save-status"></span>
+        </div>
+
+        <div id="session-dm-end" class="session-menu-end">
+          <button id="end-session-btn" class="small-btn" type="button">End Session</button>
+        </div>
+      </aside>
     </div>
   </template>
 
