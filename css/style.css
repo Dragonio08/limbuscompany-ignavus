@@ -2127,3 +2127,55 @@ body::before {
   border: 1px dashed var(--line);
   min-height: 80px;
 }
+
+/* ---------- NPC creator ---------- */
+
+.npc-vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8rem;
+}
+
+.npc-vitals-grid .creator-field {
+  margin-bottom: 0;
+}
+
+.npc-item-builder {
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  padding: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.npc-item-builder-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.npc-item-builder-row select,
+.npc-item-builder-row input {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.05rem;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.5rem 0.6rem;
+}
+
+.npc-item-builder-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.npc-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#npc-ego-toggle.is-on {
+  border-color: var(--crimson-bright);
+  color: #fff;
+  background: var(--crimson);
+}
