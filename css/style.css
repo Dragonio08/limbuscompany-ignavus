@@ -2323,3 +2323,22 @@ body.session-active .map-page {
   color: #fff;
   background: var(--crimson);
 }
+
+/* ---------- Smooth movement in Map / Encounter ---------- */
+
+.map-layer {
+  will-change: transform;
+  transition: transform 0.2s ease-out;
+}
+
+.map-layer.is-panning {
+  transition: none;
+}
+
+.map-dot {
+  transition: left 0.15s ease-out, top 0.15s ease-out;
+}
+
+.map-dot.is-dragging {
+  transition: none;
+}
