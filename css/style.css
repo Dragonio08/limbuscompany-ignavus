@@ -1891,6 +1891,14 @@ body::before {
   flex-shrink: 0;
 }
 
+.nav-session-divider {
+  color: var(--ink-dim);
+  font-size: 1.4rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+  user-select: none;
+}
+
 .nav-participant-bubble.is-dm {
   border: 2px solid var(--crimson-bright);
 }
@@ -1972,18 +1980,145 @@ body::before {
   padding: 0.4rem 0.6rem;
 }
 
+/* The session fills the whole page below the navbar. */
+.session-view {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
 .session-stage {
-  margin-top: 1rem;
+  position: absolute;
+  inset: 0;
+}
+
+body.session-active {
+  overflow: hidden;
+}
+
+body.session-active .map-page {
+  padding: 0;
+  min-height: 0;
+}
+
+.session-mode-badge {
+  position: absolute;
+  top: 0.8rem;
+  left: 0.8rem;
+  z-index: 5;
+  margin: 0;
+  padding: 0.3rem 0.8rem;
+  background: rgba(10, 9, 8, 0.8);
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.map-empty-note {
+  padding: 1rem;
+}
+
+/* ---- DM pull-out menu ---- */
+
+.session-menu-toggle {
+  position: absolute;
+  top: 0.8rem;
+  left: 0;
+  z-index: 62;
+  padding: 0.5rem 0.9rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  background: var(--bg-panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-left: none;
+  cursor: pointer;
+  transition: left 0.25s ease, border-color 0.2s ease;
+}
+
+.session-menu-toggle:hover,
+.session-menu-toggle:focus-visible {
+  border-color: var(--gold);
+}
+
+.session-menu-toggle.is-open {
+  left: 280px;
+}
+
+.session-menu {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  z-index: 60;
+  padding: 1rem;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+}
+
+.session-menu.is-open {
+  transform: translateX(0);
+}
+
+.session-menu-heading {
+  margin: 0.4rem 0 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+}
+
+.session-menu-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.session-menu-modes .sheet-tab {
+  flex: none;
+  font-size: 1.2rem;
+  padding: 0.55rem 1rem;
+}
+
+.session-menu-tools {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6rem;
+}
+
+.session-menu-tools select {
+  font-family: 'Times New Roman', Times, serif;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.4rem 0.6rem;
+  width: 100%;
+}
+
+.session-menu-end {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.session-menu-end .small-btn {
+  width: 100%;
 }
 
 /* ---- Story mode ---- */
 
 .story-canvas {
-  position: relative;
-  width: 100%;
-  height: 60vh;
-  min-height: 360px;
-  border: 1px solid var(--line);
+  position: absolute;
+  inset: 0;
   background: var(--bg-panel);
   overflow: hidden;
 }
@@ -2051,11 +2186,8 @@ body::before {
 /* ---- Map mode ---- */
 
 .map-canvas {
-  position: relative;
-  width: 100%;
-  height: 60vh;
-  min-height: 360px;
-  border: 1px solid var(--line);
+  position: absolute;
+  inset: 0;
   background: var(--bg-panel);
   overflow: hidden;
 }
@@ -2116,16 +2248,28 @@ body::before {
 }
 
 .encounter-roster {
-  margin-top: 1rem;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  padding: 0.4rem 1rem 0.6rem;
+  background: rgba(10, 9, 8, 0.88);
+  border-top: 1px solid var(--line);
+}
+
+.encounter-roster .sheet-section-title {
+  font-size: 0.95rem;
+  margin: 0 0 0.3rem;
 }
 
 .encounter-roster-tray {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0.8rem;
+  padding: 0.5rem;
   border: 1px dashed var(--line);
-  min-height: 80px;
+  min-height: 70px;
 }
 
 /* ---------- NPC creator ---------- */
