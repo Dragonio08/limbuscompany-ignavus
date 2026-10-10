@@ -1053,44 +1053,88 @@ async function loadAllCharacterOptionsInto(selectId) {
   });
 }
 
-async function renderEncounterMode() {
-  const layer = document.getElementById("encounter-layer");
-  const grid = document.getElementById("encounter-grid");
-  const roster = document.getElementById("encounter-roster");
-  if (!layer || !grid || !roster) return;
+// Encounter mode is updated in place, same as Map mode: the image, the grid
+// and every token are created once and then just moved/updated. Nothing is
+// torn down and rebuilt on each realtime update, and data is fetched before
+// the DOM is touched, so tokens no longer flicker after you move things.
+const encState = {
+  layer: null,
+  tray: null,
+  img: null,
+  imgSrc: null,
+  gridKey: null,
+  tokens: new Map(), // "player:<user_id>" / "npc:<id>" -> token element
+  pendingTiles: new Map(), // key -> {col, row} dropped locally, not yet echoed back
+};
+let encounterRenderToken = 0;
 
-  const canvas = document.getElementById("encounter-canvas");
+// Updates a portrait element only where something actually changed, so an
+// unchanged portrait image is never reset (resetting it is what flashes).
+function applyTokenVisual(el, character) {
+  const portrait = character && character.portrait ? character.portrait : "";
+  const initial = character ? character.name.charAt(0).toUpperCase() : "?";
+  const color = character && character.signature_color ? character.signature_color : "";
 
-  const cols = sessionRow.encounter_cols || 10;
-  const rows = sessionRow.encounter_rows || 8;
+  if (el._portrait !== portrait) {
+    el.style.backgroundImage = portrait ? `url("${portrait}")` : "";
+    el._portrait = portrait;
+  }
+  const text = portrait ? "" : initial;
+  if (el.textContent !== text) el.textContent = text;
+  if (el._color !== color) {
+    el.style.borderColor = color;
+    el._color = color;
+  }
+}
 
-  // Same shared offset as Map mode, so the picture moves the same way here.
-  applyLayerOffset(layer);
+function resetEncounterState(layer, roster) {
+  encState.layer = layer;
+  encState.img = null;
+  encState.imgSrc = null;
+  encState.gridKey = null;
+  encState.tokens = new Map();
+  encState.pendingTiles = new Map();
 
-  roster.style.display = viewerIsDm ? "block" : "none";
+  roster.innerHTML = "";
+  const rosterTitle = document.createElement("p");
+  rosterTitle.className = "sheet-section-title display";
+  rosterTitle.textContent = "Roster - drag onto the grid";
+  roster.appendChild(rosterTitle);
 
-  layer.querySelectorAll(".map-bg-image, .encounter-token").forEach((el) => el.remove());
+  encState.tray = document.createElement("div");
+  encState.tray.className = "encounter-roster-tray";
+  roster.appendChild(encState.tray);
+}
 
-  if (sessionRow.map_image) {
-    const img = document.createElement("img");
-    img.className = "map-bg-image";
-    img.draggable = false;
-    img.src = sessionRow.map_image;
-    layer.insertBefore(img, grid);
-    sizeLayerToImage(layer, img, sessionRow.map_image);
-  } else {
-    resetLayerSize(layer);
+function syncEncounterImage(layer, grid) {
+  const src = sessionRow.map_image;
+
+  if (src) {
+    if (!encState.img || encState.imgSrc !== src) {
+      if (encState.img) encState.img.remove();
+      const img = document.createElement("img");
+      img.className = "map-bg-image";
+      img.draggable = false;
+      img.src = src;
+      layer.insertBefore(img, grid);
+      encState.img = img;
+      encState.imgSrc = src;
+      sizeLayerToImage(layer, img, src);
+    }
+    return;
   }
 
-  // Panning: dragging anywhere that isn't a token moves the whole map + grid.
-  // Tokens stop their own pointerdown from bubbling, so they drag separately.
-  if (viewerIsDm && canvas) {
-    canvas.style.touchAction = "none";
-    canvas.onpointerdown = (event) => {
-      if (event.target.closest(".encounter-token")) return;
-      startPanDrag(event, layer, currentMapOffset(), commitMapOffset);
-    };
+  if (encState.img) {
+    encState.img.remove();
+    encState.img = null;
+    encState.imgSrc = null;
   }
+  resetLayerSize(layer);
+}
+
+function syncEncounterGrid(grid, cols, rows) {
+  const key = `${cols}x${rows}`;
+  if (encState.gridKey === key) return; // same size: leave the cells alone
 
   grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
   grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
@@ -1102,98 +1146,195 @@ async function renderEncounterMode() {
     cell.dataset.row = Math.floor(i / cols);
     grid.appendChild(cell);
   }
+  encState.gridKey = key;
+}
+
+function placeTokenOnTile(token, col, row, cols, rows) {
+  token.style.left = `${((col + 0.5) / cols) * 100}%`;
+  token.style.top = `${((row + 0.5) / rows) * 100}%`;
+}
+
+function createEncounterToken(kind, id) {
+  const token = document.createElement("div");
+  token.className = "encounter-token";
+
+  const portrait = document.createElement("div");
+  portrait.className = "token-portrait";
+  token.appendChild(portrait);
+
+  if (viewerIsDm) {
+    token.classList.add("is-draggable");
+    token.style.touchAction = "none";
+    token.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+      const key = `${kind}:${id}`;
+      startTileDrag(event, token, document.getElementById("encounter-layer"), async (col, row) => {
+        encState.pendingTiles.set(key, { col, row });
+        const table = kind === "player" ? "session_players" : "session_npcs";
+        const idColumn = kind === "player" ? "user_id" : "id";
+        await client.from(table).update({ tile_col: col, tile_row: row }).eq(idColumn, id);
+        encState.pendingTiles.delete(key);
+      });
+    });
+  }
+
+  return token;
+}
+
+function syncEncounterTokens(layer, players, npcs, characters, cols, rows) {
+  const entries = [];
+  (players || []).forEach((p) => {
+    if (!p.character_id) return;
+    entries.push({ kind: "player", id: p.user_id, characterId: p.character_id, col: p.tile_col, row: p.tile_row });
+  });
+  (npcs || []).forEach((n) => {
+    entries.push({ kind: "npc", id: n.id, characterId: n.character_id, col: n.tile_col, row: n.tile_row });
+  });
+
+  const wanted = new Set();
+
+  entries.forEach((e) => {
+    const key = `${e.kind}:${e.id}`;
+    wanted.add(key);
+
+    let token = encState.tokens.get(key);
+    if (!token) {
+      token = createEncounterToken(e.kind, e.id);
+      encState.tokens.set(key, token);
+    }
+
+    const character = characters.get(e.characterId);
+    token.title = character ? character.name : "?";
+    applyTokenVisual(token.firstChild, character);
+
+    // Never move a token out from under the pointer while it's being dragged.
+    if (token.classList.contains("is-dragging")) return;
+
+    const pending = encState.pendingTiles.get(key);
+    const col = pending ? pending.col : e.col;
+    const row = pending ? pending.row : e.row;
+
+    if (col !== null && col !== undefined) {
+      if (token.parentElement !== layer) layer.appendChild(token);
+      placeTokenOnTile(token, col, row, cols, rows);
+    } else {
+      if (token.parentElement !== encState.tray) encState.tray.appendChild(token);
+      token.style.left = "";
+      token.style.top = "";
+    }
+  });
+
+  encState.tokens.forEach((token, key) => {
+    if (!wanted.has(key)) {
+      token.remove();
+      encState.tokens.delete(key);
+    }
+  });
+}
+
+async function renderEncounterMode() {
+  const layer = document.getElementById("encounter-layer");
+  const grid = document.getElementById("encounter-grid");
+  const roster = document.getElementById("encounter-roster");
+  const canvas = document.getElementById("encounter-canvas");
+  if (!layer || !grid || !roster || !canvas) return;
+
+  const myToken = ++encounterRenderToken;
 
   const { data: players } = await client.from("session_players").select("*");
   const { data: npcs } = await client.from("session_npcs").select("*");
-  const characters = await fetchCharactersByIds([
+  const characters = await fetchCharactersCached([
     ...(players || []).map((p) => p.character_id),
     ...(npcs || []).map((n) => n.character_id),
   ]);
 
-  roster.innerHTML = "";
-  const rosterTitle = document.createElement("p");
-  rosterTitle.className = "sheet-section-title display";
-  rosterTitle.textContent = "Roster — drag onto the grid";
-  roster.appendChild(rosterTitle);
+  if (myToken !== encounterRenderToken) return; // a newer render superseded this one
 
-  const rosterTray = document.createElement("div");
-  rosterTray.className = "encounter-roster-tray";
-  roster.appendChild(rosterTray);
+  if (encState.layer !== layer) resetEncounterState(layer, roster);
 
-  function placeToken(character, tileCol, tileRow, kind, id) {
-    const token = document.createElement("div");
-    token.className = "encounter-token";
-    token.appendChild(tokenVisual(character));
-    token.title = character ? character.name : "?";
+  const cols = sessionRow.encounter_cols || 10;
+  const rows = sessionRow.encounter_rows || 8;
 
-    const isPlaced = tileCol !== null && tileCol !== undefined;
-    if (isPlaced) {
-      token.style.left = `${((tileCol + 0.5) / cols) * 100}%`;
-      token.style.top = `${((tileRow + 0.5) / rows) * 100}%`;
-      layer.appendChild(token);
-    } else {
-      rosterTray.appendChild(token);
-    }
+  // Same shared offset as Map mode, so the picture moves the same way here.
+  applyLayerOffset(layer);
+  roster.style.display = viewerIsDm ? "block" : "none";
 
-    if (viewerIsDm) {
-      token.classList.add("is-draggable");
-      token.style.touchAction = "none";
-      token.addEventListener("pointerdown", (event) => {
-        event.stopPropagation();
-        startTileDrag(event, token, layer, cols, rows, async (col, row) => {
-          const table = kind === "player" ? "session_players" : "session_npcs";
-          const idColumn = kind === "player" ? "user_id" : "id";
-          await client
-            .from(table)
-            .update({ tile_col: col, tile_row: row })
-            .eq(idColumn, id);
-        });
-      });
-    }
+  syncEncounterImage(layer, grid);
+  syncEncounterGrid(grid, cols, rows);
+  syncEncounterTokens(layer, players, npcs, characters, cols, rows);
+
+  // Panning: dragging anywhere that isn't a token moves the whole map + grid.
+  // Tokens stop their own pointerdown from bubbling, so they drag separately.
+  if (viewerIsDm) {
+    canvas.style.touchAction = "none";
+    canvas.onpointerdown = (event) => {
+      if (event.target.closest(".encounter-token")) return;
+      startPanDrag(event, layer, currentMapOffset(), commitMapOffset);
+    };
   }
-
-  (players || []).forEach((p) => {
-    if (!p.character_id) return;
-    placeToken(characters.get(p.character_id), p.tile_col, p.tile_row, "player", p.user_id);
-  });
-
-  (npcs || []).forEach((n) => {
-    placeToken(characters.get(n.character_id), n.tile_col, n.tile_row, "npc", n.id);
-  });
 }
 
-function startTileDrag(event, token, layer, cols, rows, onDrop) {
+// Drags a token (from the roster tray or already on the grid) and snaps it
+// to the tile under the pointer on release. Dropping outside the grid puts
+// it back exactly where it came from.
+function startTileDrag(event, token, layer, onDrop) {
   event.preventDefault();
-  const wasInTray = token.parentElement !== layer;
 
-  // Reparent into the layer so it can move freely over the grid while dragging.
-  if (token.parentElement !== layer) {
-    layer.appendChild(token);
-    token.style.left = "-999px";
-    token.style.top = "-999px";
+  const startX = event.clientX;
+  const startY = event.clientY;
+  const origParent = token.parentElement;
+  const origLeft = token.style.left;
+  const origTop = token.style.top;
+
+  let moved = false;
+  let latest = { x: startX, y: startY };
+  let rafId = null;
+
+  function applyFrame() {
+    rafId = null;
+    const rect = layer.getBoundingClientRect();
+    token.style.left = `${((latest.x - rect.left) / rect.width) * 100}%`;
+    token.style.top = `${((latest.y - rect.top) / rect.height) * 100}%`;
   }
 
-  function layerRect() {
-    return layer.getBoundingClientRect();
+  function stop() {
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    document.removeEventListener("pointercancel", onCancel);
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  }
+
+  function restore() {
+    if (token.parentElement !== origParent) origParent.appendChild(token);
+    token.style.left = origLeft;
+    token.style.top = origTop;
   }
 
   function onMove(moveEvent) {
-    const rect = layerRect();
-    const xPct = ((moveEvent.clientX - rect.left) / rect.width) * 100;
-    const yPct = ((moveEvent.clientY - rect.top) / rect.height) * 100;
-    token.style.left = `${xPct}%`;
-    token.style.top = `${yPct}%`;
+    latest = { x: moveEvent.clientX, y: moveEvent.clientY };
+
+    if (!moved) {
+      if (Math.abs(latest.x - startX) <= 4 && Math.abs(latest.y - startY) <= 4) return;
+      moved = true;
+      token.classList.add("is-dragging");
+      // Move it into the layer so it can travel freely over the grid.
+      if (token.parentElement !== layer) layer.appendChild(token);
+    }
+
+    if (rafId === null) rafId = requestAnimationFrame(applyFrame);
   }
 
   function onUp(upEvent) {
-    document.removeEventListener("pointermove", onMove);
-    document.removeEventListener("pointerup", onUp);
+    stop();
 
-    const rect = layerRect();
-    const col = Math.floor(((upEvent.clientX - rect.left) / rect.width) * cols);
-    const row = Math.floor(((upEvent.clientY - rect.top) / rect.height) * rows);
-    const clampedCol = Math.max(0, Math.min(cols - 1, col));
-    const clampedRow = Math.max(0, Math.min(rows - 1, row));
+    if (!moved) return; // a plain click: nothing to do
+
+    const cols = sessionRow.encounter_cols || 10;
+    const rows = sessionRow.encounter_rows || 8;
+    const rect = layer.getBoundingClientRect();
 
     const inBounds =
       upEvent.clientX >= rect.left &&
@@ -1202,15 +1343,26 @@ function startTileDrag(event, token, layer, cols, rows, onDrop) {
       upEvent.clientY <= rect.bottom;
 
     if (inBounds) {
-      onDrop(clampedCol, clampedRow);
-    } else if (wasInTray) {
-      onDrop(null, null); // dropped outside — send back to the roster
+      const col = Math.max(0, Math.min(cols - 1, Math.floor(((upEvent.clientX - rect.left) / rect.width) * cols)));
+      const row = Math.max(0, Math.min(rows - 1, Math.floor(((upEvent.clientY - rect.top) / rect.height) * rows)));
+      placeTokenOnTile(token, col, row, cols, rows);
+      onDrop(col, row);
+    } else {
+      restore();
     }
-    // else: dropped outside after already being placed — leave it where it was (re-render will restore it).
+
+    token.classList.remove("is-dragging");
+  }
+
+  function onCancel() {
+    stop();
+    if (moved) restore();
+    token.classList.remove("is-dragging");
   }
 
   document.addEventListener("pointermove", onMove);
   document.addEventListener("pointerup", onUp);
+  document.addEventListener("pointercancel", onCancel);
 }
 
 init();
