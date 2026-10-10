@@ -2342,3 +2342,20 @@ body.session-active .map-page {
 .map-dot.is-dragging {
   transition: none;
 }
+
+/* ---------- Smooth movement for Encounter tokens ---------- */
+
+.encounter-token {
+  transition: left 0.15s ease-out, top 0.15s ease-out;
+}
+
+.encounter-token.is-dragging {
+  transition: none;
+}
+
+/* Tokens waiting in the roster tray sit in normal flow, side by side. */
+.encounter-roster-tray .encounter-token {
+  position: relative;
+  transform: none;
+  transition: none;
+}
