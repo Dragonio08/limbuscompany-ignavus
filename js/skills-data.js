@@ -166,3 +166,54 @@ function archetypeOfSkill(skillKey) {
   }
   return null;
 }
+
+// ---- Character helpers (used by the Encounter combat on the Map page) ----
+// These mirror what the character sheet does, so combat uses the same numbers.
+
+// +2 for a Signature skill, +1 for a Proficient one, otherwise 0.
+function characterSkillBonus(character, skillKey) {
+  const picks = character.skill_picks || {};
+  if (picks.signature === skillKey) return 2;
+  if ((picks.proficient || []).includes(skillKey)) return 1;
+  return 0;
+}
+
+// A skill's level is its archetype's level plus any Signature/Proficient bonus.
+function characterSkillLevel(character, archetype, skillKey) {
+  return (character[archetype] || 1) + characterSkillBonus(character, skillKey);
+}
+
+// Rigour is a Justice skill. NPCs have no skill picks, so theirs is just
+// their Justice stat.
+function rigourOf(character) {
+  return characterSkillLevel(character, "justice", "rigour");
+}
+
+// NPCs made with the NPC creator have Max HP/SP/Speed chosen directly;
+// everyone else uses the skill-based formulas.
+function computeVitals(character) {
+  if (character.is_npc && character.max_hp !== null && character.max_hp !== undefined) {
+    return {
+      maxHp: character.max_hp,
+      maxSp: character.max_sp !== null && character.max_sp !== undefined ? character.max_sp : 10,
+      speed:
+        character.speed_override !== null && character.speed_override !== undefined
+          ? character.speed_override
+          : 3,
+    };
+  }
+
+  const level = character.level || 1;
+  return {
+    maxHp: calcMaxHp(characterSkillLevel(character, "fortitude", "weathering"), level),
+    maxSp: calcMaxSp(characterSkillLevel(character, "temperance", "will_to_power"), level),
+    speed: calcSpeed(characterSkillLevel(character, "fortitude", "adaptability")),
+  };
+}
+
+// hp_current / sp_current are NULL while a character is at full health.
+function currentVitalValue(character, kind, max) {
+  const stored = character[`${kind}_current`];
+  if (stored === null || stored === undefined) return max;
+  return Math.max(0, Math.min(stored, max));
+}

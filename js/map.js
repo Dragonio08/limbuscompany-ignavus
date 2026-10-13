@@ -102,7 +102,7 @@ async function loadSession() {
 }
 
 function subscribeRealtime() {
-  client
+  const channel = client
     .channel("session-updates")
     .on(
       "postgres_changes",
@@ -115,7 +115,10 @@ function subscribeRealtime() {
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "session_players" },
-      () => render()
+      () => {
+        render();
+        refreshLatecomerPrompt();
+      }
     )
     // Token positions live in this same table, so UPDATE events fire on
     // every drag. The navbar bubbles only need rebuilding when someone
@@ -134,8 +137,18 @@ function subscribeRealtime() {
       "postgres_changes",
       { event: "*", schema: "public", table: "session_npcs" },
       () => render()
-    )
-    .subscribe();
+    );
+
+  // Only the DM's browser applies players' combat actions.
+  if (viewerIsDm) {
+    channel.on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "session_actions" },
+      (payload) => enqueueAction(payload.new)
+    );
+  }
+
+  channel.subscribe();
 }
 
 // ---- Top-level render: switches between waiting room and session view ----
@@ -361,6 +374,7 @@ function setSessionMenuOpen(open) {
   toggle.classList.toggle("is-open", open);
   toggle.setAttribute("aria-expanded", open ? "true" : "false");
   toggle.textContent = open ? "‹ Close" : "☰ Menu";
+  if (open && viewerIsDm && sessionRow && sessionRow.mode === "encounter") refreshCombatants();
 }
 
 function wireSessionView() {
@@ -393,6 +407,64 @@ function wireSessionView() {
   wireStoryControls();
   wireMapControls();
   wireEncounterControls();
+  wireLatecomerPrompt();
+}
+
+// A player who joined after the session started, or whom the DM removed from
+// the stage, has no character in the session. This lets them pick one.
+let latecomerWired = false;
+
+async function wireLatecomerPrompt() {
+  if (viewerIsDm) return;
+
+  const select = document.getElementById("late-join-select");
+  const button = document.getElementById("late-join-btn");
+  const statusEl = document.getElementById("late-join-status");
+
+  const { data: myChars } = await client
+    .from("characters")
+    .select("id, name")
+    .eq("owner_id", currentUserId)
+    .eq("is_npc", false)
+    .order("created_at", { ascending: false });
+
+  (myChars || []).forEach((c) => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.name;
+    select.appendChild(opt);
+  });
+
+  button.addEventListener("click", async () => {
+    if (!select.value) {
+      statusEl.textContent = "Pick a character first.";
+      return;
+    }
+    const { error } = await client
+      .from("session_players")
+      .upsert({ user_id: currentUserId, character_id: select.value }, { onConflict: "user_id" });
+    statusEl.textContent = error ? "Couldn't join: " + error.message : "";
+  });
+
+  latecomerWired = true;
+  refreshLatecomerPrompt();
+}
+
+async function refreshLatecomerPrompt() {
+  const box = document.getElementById("late-join");
+  if (!box) return;
+  if (viewerIsDm || !latecomerWired || !sessionRow || sessionRow.status !== "active") {
+    box.style.display = "none";
+    return;
+  }
+
+  const { data: mine } = await client
+    .from("session_players")
+    .select("character_id")
+    .eq("user_id", currentUserId)
+    .maybeSingle();
+
+  box.style.display = !mine || !mine.character_id ? "flex" : "none";
 }
 
 async function setMode(mode) {
@@ -410,6 +482,9 @@ function updateModeVisibility() {
     const tools = document.getElementById(`${m}-dm-controls`);
     if (tools) tools.style.display = viewerIsDm && m === sessionRow.mode ? "flex" : "none";
   });
+
+  // The combat UI belongs to Encounter mode; hide it in the others.
+  if (sessionRow.mode !== "encounter") renderCombatUI();
   const label = document.getElementById("session-mode-label");
   if (label) label.textContent = `Mode: ${sessionRow.mode.charAt(0).toUpperCase() + sessionRow.mode.slice(1)}`;
 }
@@ -421,13 +496,13 @@ function updateModeVisibility() {
 function wireStoryControls() {
   if (!viewerIsDm) return;
 
-  loadNpcOptionsInto("story-npc-select");
+  loadAllCharacterOptionsInto("story-npc-select");
 
   document.getElementById("story-add-npc-btn").addEventListener("click", async () => {
     const select = document.getElementById("story-npc-select");
     const statusEl = document.getElementById("story-status");
     if (!select.value) {
-      statusEl.textContent = "Pick an NPC first.";
+      statusEl.textContent = "Pick a character first.";
       return;
     }
     const { error } = await client
@@ -511,18 +586,23 @@ function buildStoryToken(character, x, y, kind, id) {
             .update({ story_x: xPct, story_y: yPct })
             .eq(idColumn, id);
         },
-        kind === "npc"
-          ? () => {
-              openTokenPopup(event.clientX, event.clientY, character ? character.name : "NPC", [
-                {
-                  label: "Remove",
-                  onClick: async () => {
-                    await client.from("session_npcs").delete().eq("id", id);
-                  },
-                },
-              ]);
-            }
-          : null
+        () => {
+          openTokenPopup(event.clientX, event.clientY, character ? character.name : "?", [
+            {
+              label: "Remove",
+              onClick: async () => {
+                if (kind === "npc") {
+                  // A token the DM added: just take it off the stage.
+                  await client.from("session_npcs").delete().eq("id", id);
+                } else {
+                  // A player's character: take it out of the session. The
+                  // player stays in the room and can pick a character again.
+                  await client.from("session_players").update({ character_id: null }).eq("user_id", id);
+                }
+              },
+            },
+          ]);
+        }
       );
     });
   }
@@ -1250,6 +1330,8 @@ async function renderEncounterMode() {
 
   if (myToken !== encounterRenderToken) return; // a newer render superseded this one
 
+  setEncounterData(players, npcs, characters);
+
   if (encState.layer !== layer) resetEncounterState(layer, roster);
 
   const cols = sessionRow.encounter_cols || 10;
@@ -1262,6 +1344,7 @@ async function renderEncounterMode() {
   syncEncounterImage(layer, grid);
   syncEncounterGrid(grid, cols, rows);
   syncEncounterTokens(layer, players, npcs, characters, cols, rows);
+  renderCombatUI();
 
   // Panning: dragging anywhere that isn't a token moves the whole map + grid.
   // Tokens stop their own pointerdown from bubbling, so they drag separately.
