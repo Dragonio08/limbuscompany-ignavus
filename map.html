@@ -67,10 +67,25 @@
           </div>
         </div>
         <div id="encounter-roster" class="encounter-roster"></div>
+
+        <!-- Combat -->
+        <div id="combat-order" class="combat-order" style="display: none;"></div>
+        <div id="combat-actions" class="combat-actions" style="display: none;"></div>
+        <div id="combat-extra" class="combat-extra" style="display: none;"></div>
+        <button id="combat-begin-btn" class="small-btn combat-begin-btn" type="button" style="display: none;">Begin Combat</button>
       </div>
 
       <!-- Players just see which mode is active -->
       <p id="session-mode-label" class="session-mode-badge" style="display: none;"></p>
+
+      <div id="late-join" class="late-join" style="display: none;">
+        <p class="late-join-title display">Join the session</p>
+        <select id="late-join-select">
+          <option value="" disabled selected>Choose a character</option>
+        </select>
+        <button id="late-join-btn" class="small-btn" type="button">Join</button>
+        <span id="late-join-status" class="save-status"></span>
+      </div>
 
       <!-- DM pull-out menu -->
       <button id="session-menu-toggle" class="session-menu-toggle display" type="button" aria-expanded="false" style="display: none;">☰ Menu</button>
@@ -86,7 +101,7 @@
 
         <div id="story-dm-controls" class="session-menu-tools" style="display: none;">
           <select id="story-npc-select"></select>
-          <button id="story-add-npc-btn" class="small-btn" type="button">+ Add NPC</button>
+          <button id="story-add-npc-btn" class="small-btn" type="button">+ Add Token</button>
           <span id="story-status" class="save-status"></span>
         </div>
 
@@ -102,6 +117,8 @@
           <span id="encounter-status" class="save-status"></span>
         </div>
 
+        <div id="encounter-combatants" class="session-menu-tools" style="display: none;"></div>
+
         <div id="session-dm-end" class="session-menu-end">
           <button id="end-session-btn" class="small-btn" type="button">End Session</button>
         </div>
@@ -113,6 +130,9 @@
   <script src="js/supabase-config.js"></script>
   <script src="js/supabase-client.js"></script>
   <script src="js/navbar.js"></script>
+  <script src="js/skills-data.js"></script>
+  <script src="js/weapon-skills.js"></script>
+  <script src="js/combat.js"></script>
   <script src="js/map.js"></script>
 </body>
 </html>
