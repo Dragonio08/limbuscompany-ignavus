@@ -2359,3 +2359,298 @@ body.session-active .map-page {
   transform: none;
   transition: none;
 }
+
+/* ---------- Encounter combat ---------- */
+
+.combat-begin-btn {
+  position: absolute;
+  right: 1rem;
+  bottom: 0.9rem;
+  z-index: 8;
+  font-size: 1.1rem;
+  padding: 0.55rem 1.2rem;
+  background: var(--crimson);
+  border-color: var(--crimson-bright);
+  color: #fff;
+}
+
+.combat-begin-btn:hover,
+.combat-begin-btn:focus-visible {
+  background: var(--crimson-bright);
+}
+
+/* the roster bar must not slide under the Begin / End Combat button */
+.encounter-roster {
+  padding-right: 11rem;
+}
+
+/* Initiative order: top right, just under the navbar */
+.combat-order {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.8rem;
+  width: 270px;
+  max-height: calc(100% - 7rem);
+  overflow-y: auto;
+  z-index: 6;
+  padding: 0.7rem 0.8rem;
+  background: rgba(10, 9, 8, 0.9);
+  border: 1px solid var(--line);
+}
+
+.combat-order-title {
+  margin: 0 0 0.3rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}
+
+.combat-order-note {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--ink-dim);
+}
+
+.combat-order-list {
+  list-style: none;
+  margin: 0 0 0.7rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.combat-order-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "name total" "roll roll";
+  gap: 0 0.6rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+}
+
+.combat-order-item.is-npc {
+  border-left: 3px solid var(--crimson-bright);
+}
+
+.combat-order-item.is-current {
+  border-color: var(--yellow);
+  box-shadow: inset 0 0 0 1px var(--yellow);
+}
+
+.combat-order-name {
+  grid-area: name;
+  font-size: 0.95rem;
+}
+
+.combat-order-total {
+  grid-area: total;
+  font-size: 1.3rem;
+  color: var(--yellow);
+}
+
+.combat-order-roll {
+  grid-area: roll;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--ink-dim);
+}
+
+.combat-log {
+  max-height: 150px;
+  overflow-y: auto;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--ink-dim);
+}
+
+.combat-log p {
+  margin: 0 0 0.35rem;
+}
+
+/* Action bar: bottom centre (raised for the DM, whose roster sits underneath) */
+.combat-actions {
+  position: absolute;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 7;
+  width: min(560px, calc(100% - 2rem));
+  padding: 0.7rem 0.9rem;
+  background: rgba(10, 9, 8, 0.92);
+  border: 1px solid var(--gold);
+  text-align: center;
+}
+
+.combat-actions.is-dm {
+  bottom: 8.5rem;
+}
+
+.combat-actions-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+}
+
+.combat-actions-row {
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+
+.combat-hint {
+  margin: 0.3rem 0;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--ink-dim);
+}
+
+.combat-attack-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.6rem;
+}
+
+.combat-attack-panel select,
+.combat-attack-panel input,
+.combat-extra select,
+.combat-extra input {
+  font-family: 'Times New Roman', Times, serif;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.4rem 0.6rem;
+}
+
+.combat-attack-panel input {
+  width: 5rem;
+}
+
+/* DM's extra-action dice roller */
+.combat-extra {
+  position: absolute;
+  left: 1rem;
+  bottom: 8.5rem;
+  z-index: 7;
+  width: 300px;
+  padding: 0.7rem 0.9rem;
+  background: rgba(10, 9, 8, 0.92);
+  border: 1px solid var(--crimson-bright);
+}
+
+.combat-extra > input[type="text"] {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.combat-dice-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.combat-dice-row input {
+  width: 4rem;
+}
+
+.combat-toast {
+  position: absolute;
+  top: 0.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  max-width: min(520px, calc(100% - 2rem));
+  padding: 0.5rem 0.9rem;
+  background: rgba(10, 9, 8, 0.95);
+  border: 1px solid var(--yellow);
+  color: var(--ink);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* highlighted tiles for Move, and whose turn it is */
+.encounter-cell.is-reachable {
+  background: rgba(217, 178, 60, 0.28);
+  cursor: pointer;
+}
+
+.encounter-cell.is-reachable:hover {
+  background: rgba(217, 178, 60, 0.5);
+}
+
+.encounter-token.is-active-turn .token-portrait {
+  box-shadow: 0 0 0 3px var(--yellow), 0 0 14px var(--yellow);
+}
+
+/* Combatants list in the DM menu */
+.combatant-amount {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.combatant-amount input {
+  width: 5rem;
+  font-family: 'Times New Roman', Times, serif;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.3rem 0.5rem;
+}
+
+.combatant-row {
+  border: 1px solid var(--line);
+  padding: 0.5rem 0.6rem;
+}
+
+.combatant-name {
+  margin: 0 0 0.3rem;
+  font-size: 1rem;
+}
+
+.combatant-vital {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.combatant-vital span {
+  flex: 1;
+}
+
+.combatant-vital .small-btn {
+  padding: 0.15rem 0.6rem;
+}
+
+/* Prompt for a player who has no character in the session */
+.late-join {
+  position: absolute;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 7;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 0.7rem 1rem;
+  background: rgba(10, 9, 8, 0.92);
+  border: 1px solid var(--gold);
+}
+
+.late-join-title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.late-join select {
+  font-family: 'Times New Roman', Times, serif;
+  background: #0e0c0b;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  padding: 0.4rem 0.6rem;
+}
